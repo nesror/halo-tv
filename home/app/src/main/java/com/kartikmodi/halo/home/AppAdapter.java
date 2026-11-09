@@ -245,12 +245,17 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         leanbackPackages = tvPackages;
         Set<String> added = LibraryApps.load(ctx);
         Set<String> removed = LibraryApps.loadRemoved(ctx);
-        if (!added.isEmpty()) {
-            Set<String> seen = new HashSet<>(tvPackages);
+        // A theme's dock is a promise: the packages it names stay on the home screen even when the app
+        // declares no leanback entry - an APK built for phones, or a set whose player ships only a phone
+        // activity. A removal from the library still wins, so this cannot resurrect a tile the owner dropped.
+        Set<String> wanted = new HashSet<>(added);
+        wanted.addAll(favourites);
+        if (!wanted.isEmpty()) {
+            Set<String> known = new HashSet<>(tvPackages);
             for (ResolveInfo ri : pm.queryIntentActivities(
                     new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)) {
-                if (ri.activityInfo != null && added.contains(ri.activityInfo.packageName)
-                        && seen.add(ri.activityInfo.packageName)) found.add(ri);
+                if (ri.activityInfo != null && wanted.contains(ri.activityInfo.packageName)
+                        && known.add(ri.activityInfo.packageName)) found.add(ri);
             }
         }
         Map<String, Cards.Card> cardByPkg = new HashMap<>();
@@ -265,7 +270,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             // The launcher's own tiles: only the Ambient screen, never Home itself.
             boolean ownHome = pkg.equals(ctx.getPackageName()) && !ri.activityInfo.name.equals(AmbientActivity.class.getName());
             if (ownHome || !ri.activityInfo.exported
-                    || !LibraryApps.visible(tvPackages.contains(pkg), hidden.contains(pkg), added.contains(pkg), removed.contains(pkg))) continue;
+                    || !LibraryApps.visible(tvPackages.contains(pkg), hidden.contains(pkg), wanted.contains(pkg), removed.contains(pkg))) continue;
             ComponentName component = new ComponentName(pkg, ri.activityInfo.name);
             Cards.Card card = cardByPkg.get(pkg);
             if (card != null && !card.component.equals(component)) continue;   // the card stands in for this tile

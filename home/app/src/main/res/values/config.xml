@@ -16,6 +16,10 @@
         <item>com.google.android.youtube.tv</item>
         <item>com.amazon.firetv.youtube</item>
         <item>com.disney.disneyplus</item>
+        <!-- 飞牛播放器 (FeiNiu / FN Media): a phone-style APK on some sets, so its dock slot is honoured
+             even without a leanback activity. 飞牛TV is its television counterpart. -->
+        <item>com.trim.tv</item>
+        <item>com.trim.media</item>
         <item>com.kartikmodi.halo.home</item>
         <!-- Past the five dock slots: the first tile of the next row. -->
         <item>com.apple.atve.androidtv.appletv</item>
@@ -37,6 +41,9 @@
         <item>com.apple.airplay.amazon.airplay</item>
         <!-- Opened from its own button in the top bar. -->
         <item>com.kartikmodi.halo.tonight</item>
+        <!-- Android's System Tracing app declares a leanback entry on some sets: a developer tool that has
+             no business on a television's home screen. -->
+        <item>com.android.traceur</item>
     </string-array>
 
     <!-- The TV's Live TV / tuner app, offered at the end of the Inputs menu. Leave empty to omit. -->
@@ -61,6 +68,8 @@
     <!-- A tile's artwork instead of the app's banner: "package=drawable", a banner_* drawable bundled with the
          launcher (res/drawable). banner_tv is a magenta field with the Live TV glyph. -->
     <string-array name="app_banners">
+        <!-- 飞牛播放器 ships a square icon only, so the launcher carries the wordmark banner for it. -->
+        <item>com.trim.media=banner_fn</item>
     </string-array>
 
     <!-- TVs with no TvInputManager have no HDMI list to read, but their own source-selection panel
@@ -148,7 +157,7 @@
     <bool name="show_home_settings_shortcut">false</bool>
 
     <!-- Installed launchable apps, including ordinary Android apps. Also settable in config.json. -->
-    <bool name="app_library">false</bool>
+    <bool name="app_library">true</bool>
 
     <!-- Module cards: an app that declares a card (docs/specs/card.md) can stand in for its tile with its own
          label, caption and glow colour, once you answer Show on the prompt. false: never look for cards or ask. -->
@@ -198,6 +207,10 @@
         <item>com.nordvpn.android=logo_nordvpn</item>
         <item>com.amazon.smarthomemapviewapp=logo_amazonalexa</item>
         <item>com.kartikmodi.halo.home=wordmark:AMBIENT</item>
+        <!-- 飞牛: the phone player and the TV app share the brand glyph, so each gets the same lockup with
+             its own name. Traced from the banner inside 飞牛TV's own APK. -->
+        <item>com.trim.tv=logo_fntv</item>
+        <item>com.trim.media=logo_fnmedia</item>
         <!-- Traced from each app's own icon on the TV (Simple Icons has none of these). -->
         <item>com.ionitech.airscreen=logo_airscreen</item>
         <item>dev.dworks.apps.anexplorer=logo_anexplorer</item>
