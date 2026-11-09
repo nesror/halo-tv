@@ -16,6 +16,7 @@ HOME_PKG=com.kartikmodi.halo.home
 printf '%s\n' \
   "for p in com.google.android.tvlauncher com.google.android.apps.tv.launcherx com.google.android.leanbacklauncher com.mitv.tvhome; do pm enable --user 0 \$p >/dev/null 2>&1 && echo enabled \$p; done; true" \
   "s=\$(settings get secure enabled_accessibility_services); n=\$(echo \"\$s\" | tr ':' '\n' | grep -v '^$HOME_PKG/' | paste -sd: -); settings put secure enabled_accessibility_services \"\${n:-null}\"; echo accessibility-cleaned" \
+  "cmd notification disallow_listener $HOME_PKG/.HaMediaListener >/dev/null 2>&1; echo media-listener-cleaned" \
   "pm uninstall $HOME_PKG; true" \
   "pm uninstall com.kartikmodi.halo.tonight; true" \
   "cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -n 1" \

@@ -15,6 +15,12 @@
     <!-- Measuring Jarvis's own voice (Visualizer) to move the mouth. -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- Home Assistant: a message shown over another app, and a screen that can be told to go dark.
+         SYSTEM_ALERT_WINDOW is the one permission that also lets the app start that message while it is in
+         the background; install.sh grants it over ADB (appops), and without it the TV still answers, just
+         with messages limited to while Halo TV is on screen. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- Needed since Android 10 to read the Wi-Fi network name for the network pill. Never requested at
          runtime: install.sh grants it with pm grant, so lint's Android 12 "ask for COARSE with
          FINE" rule does not apply here. -->
@@ -90,11 +96,42 @@
             </intent-filter>
         </activity>
 
+        <!-- A message from Home Assistant, drawn over whatever is playing; any key takes it away.
+             Its own task, so it never reorders the app behind it. -->
+        <activity
+            android:name=".MessageActivity"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|uiMode"
+            android:screenOrientation="landscape"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen" />
+        <!-- The black window that stands in for a dark screen where the TV refuses to sleep (ScreenPower). -->
+        <activity
+            android:name=".ScreenOffActivity"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|uiMode"
+            android:screenOrientation="landscape"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+        <!-- Exists for half a second to light a sleeping screen, then leaves. -->
+        <activity
+            android:name=".WakeActivity"
+            android:exported="false"
+            android:noHistory="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <activity
             android:name=".LauncherSettingsActivity"
             android:exported="false"
             android:excludeFromRecents="true"
             android:screenOrientation="landscape" />
+
         <!-- Remote Settings button panel (settings_key_panel); own task so the app behind stays put. -->
         <activity
             android:name=".QuickSettingsActivity"
@@ -160,6 +197,17 @@
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/input_key_service" />
+        </service>
+        <!-- Exists only to be an enabled notification listener: that is what lets Halo TV read the media
+             session of whatever is playing, for the Home Assistant TV entity. install.sh enables it. -->
+        <service
+            android:name=".HaMediaListener"
+            android:exported="true"
+            android:label="@string/ha_listener_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
         </service>
     </application>
 </manifest>

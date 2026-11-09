@@ -1,0 +1,83 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Halo TV",
+        "description": "The address of the TV's own web server - the one the phone remote opens at http://<tv-ip>:8765. Halo TV must be installed on the TV and the TV must be awake.",
+        "data": {
+          "host": "Host or IP address",
+          "port": "Port",
+          "name": "Name"
+        },
+        "data_description": {
+          "host": "For example 192.168.1.42, or the whole http://192.168.1.42:8765 address.",
+          "name": "What this TV is called in Home Assistant. Leave it empty to use the TV's model."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the TV. Check the address, that Halo TV is running on it, and that both are on the same network."
+    },
+    "abort": {
+      "already_configured": "This TV is already set up."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Halo TV options",
+        "data": {
+          "scan_interval": "Ask the TV every (seconds)"
+        }
+      }
+    }
+  },
+  "services": {
+    "command": {
+      "name": "Send a command",
+      "description": "Tell a Halo TV to do one thing: pause, go dark, open Ambient, read something out loud.",
+      "fields": {
+        "action": {
+          "name": "Command",
+          "description": "pause, play, play_pause, stop, next, prev, screen_off, screen_on, screen_toggle, home, ambient, dismiss, say, stop_speech, volume_set, volume_up, volume_down, mute or unmute."
+        },
+        "text": {
+          "name": "Text",
+          "description": "For 'say': the words to read out."
+        },
+        "message": {
+          "name": "Message",
+          "description": "For 'notify': the line of text to show."
+        },
+        "title": {
+          "name": "Title",
+          "description": "For 'notify': the small heading above the message."
+        },
+        "image": {
+          "name": "Image",
+          "description": "For 'notify': a picture to show, as an http(s) address or a data: URI."
+        },
+        "language": {
+          "name": "Language",
+          "description": "For 'say' and a spoken 'notify': a tag like en-GB or zh-CN. Empty uses the TV's own language."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "For 'notify': seconds on screen. 0 leaves it up until dismissed."
+        },
+        "tts": {
+          "name": "Read aloud",
+          "description": "For 'notify': also speak the message."
+        },
+        "volume": {
+          "name": "Volume",
+          "description": "For 'volume_set': 0-100."
+        },
+        "level": {
+          "name": "Volume level",
+          "description": "For 'volume_set': 0-1, the way Home Assistant usually means volume."
+        }
+      }
+    }
+  }
+}

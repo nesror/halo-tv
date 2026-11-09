@@ -960,6 +960,12 @@
   window.remoteKey = function (k) {
     if (k === 'playpause') toggle(); else if (k === 'next') next(); else if (k === 'prev') prev();
   };
+  // Explicit play and pause, for Home Assistant: a message can ask for one or the other, not a toggle.
+  window.remotePlayer = function (a) {
+    if (!playerReady) return false;
+    if (a === 'play') player.playVideo(); else if (a === 'pause') player.pauseVideo(); else toggle();
+    return true;
+  };
   document.addEventListener('keydown', function (e) {
     switch (e.keyCode) {
       case 13: case 23: toggle(); break;          // OK

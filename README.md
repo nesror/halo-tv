@@ -25,6 +25,7 @@ It installs over Wi-Fi from your computer in one command, and it's built to be i
   - [4. Run the installer](#4-run-the-installer)
   - [5. First run](#5-first-run)
 - [Using Halo TV](#using-halo-tv)
+- [Home Assistant](#home-assistant)
 - [Jarvis relay and Alexa (optional)](#jarvis-relay-and-alexa-optional)
 - [Customise](#customise)
   - [Country and streaming apps](#country-and-streaming-apps)
@@ -182,6 +183,42 @@ Re-running it is safe: it reinstalls over the existing apps and keeps your setti
 | **Phone web app** | Scan the QR code on Ambient, or open `http://<TV-IP>:8765` on a phone on the same Wi-Fi. **Music**: search and play on the TV, queue songs. **Jarvis**: type or talk. **Settings**: weather location, OpenAI key for Jarvis's voice. Add it to your home screen for an app icon. |
 | **Jarvis** | Ask for the weather, music, timers ("remind me in 20 minutes to check the oven"), the volume, or anything else. With an OpenAI key it speaks in a natural voice; without one it uses the TV's own voice. |
 | **Tonight** | Spin the genre wheel, open **For You** for AI picks, use search (top right), or pick **MARVEL** / **DC** for the Hall of Heroes. **Play on…** opens the title in the right app. |
+| **Home Assistant** | Optional: a message on screen with a picture and a voice, and a real TV entity. See [Home Assistant](#home-assistant). |
+
+---
+
+## Home Assistant
+
+Halo TV works as an Android TV in [Home Assistant](https://www.home-assistant.io): it can be told to show
+a message (text, a photo, and a voice that reads it out), to pause, and to go dark. The component is in
+`homeassistant/custom_components/halo_tv`; the full guide is [docs/home-assistant.md](docs/home-assistant.md).
+
+```bash
+cp -r homeassistant/custom_components/halo_tv <config>/custom_components/   # then restart Home Assistant
+```
+
+Then **Settings → Devices & services → Add integration → Halo TV**, and give it the TV's address
+(`http://<tv-ip>:8765`, the one the phone remote uses). You get:
+
+| | |
+|---|---|
+| `notify.mobile_app_halo_tv` | A message on the TV, with the same `message` / `title` / `data:` shape as the companion app on a phone. |
+| `media_player.halo_tv` | The TV: on/off (screen on/off), play, pause, volume, and what is playing. |
+| `halo_tv.command` | One action at a time, for scripts. |
+
+```yaml
+action: notify.mobile_app_halo_tv
+data:
+  title: Doorbell
+  message: Someone is at the front door
+  data:
+    image: http://homeassistant.local:8123/local/doorbell.jpg
+    tts: true
+    duration: 25
+```
+
+Messages can carry a command too — `data: {command: pause}`, or a message of just `/screen_off` — so one
+notification can pause the film, put a photo on screen and say what happened.
 
 ---
 
@@ -350,6 +387,9 @@ jarvis/
   relay/               Cloudflare Worker that connects Alexa and your phone to the TV
   alexa/               Alexa skill manifests and interaction models (Jarvis, Tonight)
   setup-relay.sh       deploys the relay and pairs the TV
+homeassistant/         Home Assistant custom integration (messages, media_player, commands)
+  custom_components/halo_tv/   the integration itself
+  tests/               its tests, plus fake_tv.py: a stand-in TV for working on it without one
 tools/                 tv.py: a small ADB-over-Wi-Fi client (no adb install needed); b64push.py
 assets/waves.mp4       the Waves backdrop video
 install.sh             builds and installs everything

@@ -1,0 +1,12 @@
+{
+  "domain": "halo_tv",
+  "name": "Halo TV",
+  "codeowners": ["@kartik-modi"],
+  "config_flow": true,
+  "documentation": "https://github.com/kartik-modi/halo-tv/blob/main/docs/home-assistant.md",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/kartik-modi/halo-tv/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}

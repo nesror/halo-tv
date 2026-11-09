@@ -93,6 +93,23 @@ A browser window opens for the Cloudflare login (the person does that). Alexa sk
 
 Follow README.md, "Country and streaming apps". In short: re-run `REGION=<CC> ./install.sh --tonight-only` for a new country, or `SERVICES="..." ./install.sh --tonight-only` for different apps, or edit the `services=` line by hand (`name:TMDB provider ids[:Android TV package]`, separated by `;`). For a service that isn't built into `Services.java`, find its package with `tools/tv.py "pm list packages"` and add it as the third part, or Tonight can list its titles but not open them.
 
+## Optional: Home Assistant
+
+If the person runs Home Assistant, the TV can also be a notifier and a TV entity there. The component is
+in `homeassistant/custom_components/halo_tv`; the guide is `docs/home-assistant.md`.
+
+1. Copy the folder into their Home Assistant:
+   `cp -r homeassistant/custom_components/halo_tv <config>/custom_components/` (`<config>` holds
+   `configuration.yaml`), then restart Home Assistant.
+2. Tell them to open **Settings → Devices & services → Add integration → Halo TV** and enter the TV's
+   address, the same `http://<tv-ip>:8765` the phone remote uses.
+3. `install.sh` already granted the two optional ADB permissions this needs (overlay, notification
+   listener). If messages only appear while Halo TV is on screen, the overlay grant did not stick:
+   `TV_HOST=<ip> tools/venv/bin/python tools/tv.py 'appops set com.kartikmodi.halo.home SYSTEM_ALERT_WINDOW allow'`.
+
+They get `notify.mobile_app_halo_tv` (message, picture, spoken text), `media_player.halo_tv` (screen
+on/off, play/pause, volume) and the `halo_tv.command` service.
+
 ## Undo
 
 ```bash

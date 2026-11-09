@@ -288,6 +288,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        // The phone remote's server also answers Home Assistant, so it is up from the moment Home is.
+        RemoteServer.ensureStarted(this);
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config).
         Config cfg = Config.load(this);

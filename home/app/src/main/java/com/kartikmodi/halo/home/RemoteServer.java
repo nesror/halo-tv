@@ -95,7 +95,12 @@ final class RemoteServer {
                     contentLength = Integer.parseInt(line.substring(colon + 1).trim());
                 }
             }
-            byte[] body = new byte[Math.min(contentLength, 64 * 1024)];
+            int limit = limit(target);
+            if (contentLength > limit) {
+                send(socket.getOutputStream(), 413, "text/plain", "Too large".getBytes(StandardCharsets.UTF_8));
+                return;
+            }
+            byte[] body = new byte[contentLength];
             int read = 0;
             while (read < body.length) {
                 int n = in.read(body, read, body.length - read);
@@ -154,10 +159,19 @@ final class RemoteServer {
         send(out, 200, "application/json; charset=utf-8", json.toString().getBytes(StandardCharsets.UTF_8));
     }
 
+    /** Request bodies are tiny except a Home Assistant message, which may carry a camera snapshot inline. */
+    private static int limit(String target) {
+        return target.startsWith("/api/ha/notify") ? 12 * 1024 * 1024 : 64 * 1024;
+    }
+
     // ---- Routes
 
     private void route(OutputStream out, String method, String path, Map<String, String> query, String body)
             throws IOException, JSONException {
+        if ("OPTIONS".equals(method)) {   // a browser (or curl -X OPTIONS) asking what it may send
+            send(out, 200, "text/plain", new byte[0]);
+            return;
+        }
         switch (path) {
             case "/":
                 serveAsset(out, "ambient/phone.html", "text/html; charset=utf-8");
@@ -246,6 +260,21 @@ final class RemoteServer {
             case "/api/state":
                 sendJson(out, phoneState());
                 return;
+            // ---- Home Assistant: what the TV is doing, a message for the screen, and a command.
+            case "/api/ha/info":
+                sendJson(out, HaBridge.info(app));
+                return;
+            case "/api/ha/state":
+                sendJson(out, HaBridge.state(app));
+                return;
+            case "/api/ha/notify":
+                if (!"POST".equals(method)) break;
+                sendJson(out, HaBridge.notify(app, new JSONObject(body.isEmpty() ? "{}" : body)));
+                return;
+            case "/api/ha/command":
+                if (!"POST".equals(method)) break;
+                sendJson(out, HaBridge.command(app, new JSONObject(body.isEmpty() ? "{}" : body)));
+                return;
             case "/api/tv/sync":
                 if (!"POST".equals(method)) break;
                 sendJson(out, tvSync(body));
@@ -292,18 +321,35 @@ final class RemoteServer {
         openAmbient();
     }
 
-    /** The Ambient screen's last reported state (queue, volume, notes, weather), for Jarvis. */
-    synchronized JSONObject state() throws JSONException {
-        return new JSONObject(tvState.toString());
+    /** The Ambient screen's last reported state, or an empty object if it has never reported one. */
+    static JSONObject ambientState() {
+        RemoteServer server = instance;
+        if (server == null) return new JSONObject();
+        try {
+            return server.state();
+        } catch (JSONException e) {
+            return new JSONObject();
+        }
     }
 
-    private void openAmbient() {
+    /** Opens the Ambient screen from anywhere in the app, including Home Assistant's "ambient" command. */
+    static void startAmbient(Context context) {
+        Context app = context.getApplicationContext();
         try {
             app.startActivity(new Intent(app, AmbientActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
         } catch (RuntimeException e) {
             Log.w(TAG, "could not open the Ambient screen", e);
         }
+    }
+
+    /** The Ambient screen's last reported state (queue, volume, notes, weather), for Jarvis. */
+    synchronized JSONObject state() throws JSONException {
+        return new JSONObject(tvState.toString());
+    }
+
+    private void openAmbient() {
+        startAmbient(app);
     }
 
     private JSONObject phoneState() throws JSONException {

@@ -19,3 +19,6 @@ jarvis/relay/.wrangler/
 jarvis/relay/node_modules/
 .DS_Store
 __pycache__/
+
+# Python test caches
+**/.pytest_cache/

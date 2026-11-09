@@ -1,0 +1,125 @@
+# Copy-paste examples. Each block is one automation; merge them under a single
+# `automation:` key, or paste one at a time into Settings -> Automations -> Create.
+
+# ---------------------------------------------------------------- messages
+
+- alias: Doorbell on the TV
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.doorbell
+      to: "on"
+  actions:
+    - action: notify.mobile_app_halo_tv
+      data:
+        title: Front door
+        message: Someone is at the door
+        data:
+          image: >-
+            http://homeassistant.local:8123{{ state_attr('camera.front_door', 'entity_picture') }}
+          tts: true
+          duration: 30
+
+- alias: Washing machine has finished
+  triggers:
+    - trigger: state
+      entity_id: sensor.washing_machine_state
+      to: finished
+  actions:
+    - action: notify.mobile_app_halo_tv
+      data:
+        title: Laundry
+        message: The washing machine has finished
+        data:
+          tts: true
+          duration: 20
+
+- alias: Tell the TV the bins go out
+  triggers:
+    - trigger: time
+      at: "19:30:00"
+  conditions:
+    - condition: time
+      weekday:
+        - mon
+  actions:
+    - action: notify.mobile_app_halo_tv
+      data:
+        message: The bins go out tonight
+        data:
+          tts: true
+
+# ---------------------------------------------------------------- the TV itself
+
+- alias: TV sleeps at midnight
+  triggers:
+    - trigger: time
+      at: "00:00:00"
+  actions:
+    - action: media_player.turn_off
+      target:
+        entity_id: media_player.halo_tv
+
+- alias: TV wakes at seven
+  triggers:
+    - trigger: time
+      at: "07:00:00"
+  actions:
+    - action: media_player.turn_on
+      target:
+        entity_id: media_player.halo_tv
+
+- alias: Pause the film when the phone rings
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.phone_ringing
+      to: "on"
+  actions:
+    - action: media_player.media_pause
+      target:
+        entity_id: media_player.halo_tv
+    - action: notify.mobile_app_halo_tv
+      data:
+        message: Paused - someone is calling
+        data:
+          duration: 10
+
+- alias: Ambient screen when the room is empty
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.living_room_motion
+      to: "off"
+      for: "00:10:00"
+  actions:
+    - action: halo_tv.command
+      data:
+        action: ambient
+
+# ---------------------------------------------------------------- commands
+
+- alias: Say something with a template
+  triggers:
+    - trigger: state
+      entity_id: sensor.front_door_lock
+      to: unlocked
+  actions:
+    - action: halo_tv.command
+      data:
+        action: say
+        text: >-
+          The front door was unlocked at
+          {{ now().strftime('%H:%M') }}
+        language: en-GB
+
+- alias: Screen off, then on again in the morning
+  triggers:
+    - trigger: sun
+      event: sunset
+  actions:
+    - action: halo_tv.command
+      data:
+        action: screen_off
+    # ...and Home Assistant's own timer brings it back
+    - delay: "00:10:00"
+    - action: halo_tv.command
+      data:
+        action: screen_on

@@ -1,0 +1,83 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Halo TV",
+        "description": "填入电视自身网页服务的地址 —— 也就是手机遥控器打开的那个 http://<电视IP>:8765。电视上需要已安装 Halo TV，并且电视处于开机状态。",
+        "data": {
+          "host": "主机名或 IP 地址",
+          "port": "端口",
+          "name": "名称"
+        },
+        "data_description": {
+          "host": "例如 192.168.1.42，或完整的 http://192.168.1.42:8765。",
+          "name": "这台电视在 Home Assistant 中的名字。留空则使用电视型号。"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "无法连接电视。请确认地址正确、电视上 Halo TV 正在运行，且两者在同一网络。"
+    },
+    "abort": {
+      "already_configured": "这台电视已经添加过了。"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Halo TV 选项",
+        "data": {
+          "scan_interval": "每隔多少秒查询一次电视"
+        }
+      }
+    }
+  },
+  "services": {
+    "command": {
+      "name": "发送指令",
+      "description": "让 Halo TV 做一件事：暂停、熄屏、打开氛围屏、朗读一段话。",
+      "fields": {
+        "action": {
+          "name": "指令",
+          "description": "pause、play、play_pause、stop、next、prev、screen_off、screen_on、screen_toggle、home、ambient、dismiss、say、stop_speech、volume_set、volume_up、volume_down、mute 或 unmute。"
+        },
+        "text": {
+          "name": "文本",
+          "description": "用于 say：要朗读的内容。"
+        },
+        "message": {
+          "name": "消息",
+          "description": "用于 notify：要在电视上显示的文字。"
+        },
+        "title": {
+          "name": "标题",
+          "description": "用于 notify：消息上方的小标题。"
+        },
+        "image": {
+          "name": "图片",
+          "description": "用于 notify：要显示的图片，可以是 http(s) 地址或 data: URI。"
+        },
+        "language": {
+          "name": "语言",
+          "description": "用于 say 和朗读式 notify：如 zh-CN、en-GB。留空则用电视自身语言。"
+        },
+        "duration": {
+          "name": "显示时长",
+          "description": "用于 notify：在屏幕上停留的秒数。0 表示一直显示到手动关闭。"
+        },
+        "tts": {
+          "name": "朗读",
+          "description": "用于 notify：同时把消息读出来。"
+        },
+        "volume": {
+          "name": "音量",
+          "description": "用于 volume_set：0-100。"
+        },
+        "level": {
+          "name": "音量比例",
+          "description": "用于 volume_set：0-1，Home Assistant 通常使用的写法。"
+        }
+      }
+    }
+  }
+}

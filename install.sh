@@ -185,6 +185,8 @@ if [ "$DO_HOME" = 1 ]; then
     die "Halo TV did not start (see above); the stock launcher was left untouched."
   fi
   printf '%s\n' "pm grant $HOME_PKG android.permission.ACCESS_FINE_LOCATION 2>/dev/null; echo location-granted" \
+                "appops set $HOME_PKG SYSTEM_ALERT_WINDOW allow 2>/dev/null; echo overlay-allowed" \
+                "cmd notification allow_listener $HOME_PKG/.HaMediaListener 2>/dev/null; echo media-listener" \
                 "cmd package compile -m speed -f $HOME_PKG >/dev/null; echo compiled" | tv --batch
 
   if [ "$PLATFORM" = firetv ] || [ "$KEEP_STOCK" = 1 ]; then

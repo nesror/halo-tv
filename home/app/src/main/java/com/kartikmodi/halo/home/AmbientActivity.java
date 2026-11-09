@@ -54,6 +54,23 @@ public class AmbientActivity extends Activity {
         return current != null;
     }
 
+    /** The Ambient screen is up and in front: its player, not a media session, owns what is playing. */
+    static boolean foreground() {
+        return current != null && pausedAt == 0;
+    }
+
+    /** Plays, pauses or skips for Home Assistant. False when there is no screen to tell. */
+    static boolean playerKey(String action) {
+        AmbientActivity a = current;
+        if (a == null || a.web == null) return false;
+        String fn = "play".equals(action) ? "play"
+                : "pause".equals(action) || "stop".equals(action) ? "pause"
+                : "next".equals(action) || "prev".equals(action) ? action : "playpause";
+        a.runOnUiThread(() -> a.web.evaluateJavascript(
+                "window.remotePlayer ? remotePlayer('" + fn + "') : false", null));
+        return true;
+    }
+
     @Override
     protected void onPause() {
         super.onPause();
