@@ -228,8 +228,9 @@ notification can pause the film, put a photo on screen and say what happened.
 A daily viewing clock is built in. It counts only time spent outside the launcher — the home screen,
 Ambient and message cards do not count — and needs no extra permission. By default every 30 minutes it
 pauses the video, puts up a card and says (TTS) that it is time to look into the distance for five
-minutes; at 2 h 20 m it warns that the set will go dark in ten minutes; at 2 h 30 m it turns the screen
-off. The count resets at local midnight and survives a reboot.
+minutes; at 2 h 20 m it speaks a fixed warning ("今天看电视已满2小时，10分钟后自动关机。", the
+wording need not match the real count); at 2 h 30 m the screen simply goes dark — no card, no voice. The
+count resets at local midnight and survives a reboot.
 
 Every threshold is live over HTTP, on the port the phone remote already uses:
 

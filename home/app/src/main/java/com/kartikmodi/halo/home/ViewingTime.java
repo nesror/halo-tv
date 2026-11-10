@@ -32,6 +32,10 @@ import java.util.Set;
  *   POST /api/tvtime/reset       clear today's count (a parent extending the day)
  *   POST /api/tvtime/adjust      {"minutes": 30} add or subtract time, for testing and one-off allowances
  *
+ * The ten-minute warning speaks a fixed line ("今天看电视已满2小时，10分钟后自动关机。") that need not
+ * match the real counter - the owner asked for a round two hours. At the limit the set goes dark with no
+ * card and no voice.
+ *
  * A normal launcher cannot power a television off: PowerManager.goToSleep() is signature-protected. At
  * the daily limit ScreenPower falls back to its black window at zero brightness, which lets the set's own
  * sleep timer finish the job. docs/viewing-time.zh-CN.md explains this and the alternatives.
@@ -70,6 +74,8 @@ final class ViewingTime {
     private static final String K_MESSAGE_SECONDS = "message_seconds";
     private static final String K_SHUTDOWN_DELAY = "shutdown_delay_s";
     private static final String K_LANGUAGE = "language";
+    /** The warning is a fixed line, deliberately not derived from the real threshold: see docs. */
+    private static final String K_WARNING_TEXT = "warning_text";
 
     private static boolean enabled = true;
     private static int breakIntervalMin = 30;
@@ -83,6 +89,7 @@ final class ViewingTime {
     private static int messageSeconds = 45;
     private static int shutdownDelayS = 12;
     private static String language = "zh-CN";
+    private static String warningText = "今天看电视已满2小时，10分钟后自动关机。";
 
     // ---- Today's state.
 
@@ -133,6 +140,7 @@ final class ViewingTime {
         messageSeconds = prefs.getInt(K_MESSAGE_SECONDS, messageSeconds);
         shutdownDelayS = prefs.getInt(K_SHUTDOWN_DELAY, shutdownDelayS);
         language = prefs.getString(K_LANGUAGE, language);
+        warningText = prefs.getString(K_WARNING_TEXT, warningText);
 
         day = prefs.getString("day", "");
         if (!today().equals(day)) {
@@ -182,7 +190,8 @@ final class ViewingTime {
                 .putBoolean(K_AUTO_SHUTDOWN, autoShutdown)
                 .putInt(K_MESSAGE_SECONDS, messageSeconds)
                 .putInt(K_SHUTDOWN_DELAY, shutdownDelayS)
-                .putString(K_LANGUAGE, language);
+                .putString(K_LANGUAGE, language)
+                .putString(K_WARNING_TEXT, warningText);
         e.apply();
     }
 
@@ -275,7 +284,7 @@ final class ViewingTime {
             // A rest card right on top of the shutdown warning would be noise, not help.
             nextBreakMs = Math.max(nextBreakMs, watchedMs + breakIntervalMin * 60_000L);
             save();
-            fireWarning(warnAt);
+            fireWarning();
             return;
         }
         if (warnAt > 0 && watchedMs >= warnAt) {
@@ -305,15 +314,17 @@ final class ViewingTime {
         show("该休息了", text, messageSeconds);
     }
 
-    private static void fireWarning(long warnAt) {
-        String text = "今天看电视已满" + durationText((int) (warnAt / 60_000L))
-                + "，" + warnBeforeMin + "分钟后自动关机。";
-        show("今日观看时间", text, messageSeconds);
+    /**
+     * The warning is a fixed sentence, not a report of the real counter: the owner wants to hear
+     * "two hours" even though the ten-minute warning actually lands at 2 h 20 m. Change it over HTTP
+     * with warning_text, and move the moment it is said with warn_before_min.
+     */
+    private static void fireWarning() {
+        show("今日观看时间", warningText, messageSeconds);
     }
 
+    /** At the limit the set simply goes dark: no card and no voice, by request. */
     private static void fireShutdown() {
-        String text = "今天看电视已满" + durationText(dailyLimitMin) + "，电视即将关闭。";
-        show("今日观看时间已到", text, Math.min(messageSeconds, 20));
         if (!autoShutdown) return;
         handler.postDelayed(() -> {
             try {
@@ -367,7 +378,8 @@ final class ViewingTime {
                 .put(K_AUTO_SHUTDOWN, autoShutdown)
                 .put(K_MESSAGE_SECONDS, messageSeconds)
                 .put(K_SHUTDOWN_DELAY, shutdownDelayS)
-                .put(K_LANGUAGE, language);
+                .put(K_LANGUAGE, language)
+                .put(K_WARNING_TEXT, warningText);
 
         JSONObject todayJson = new JSONObject()
                 .put("date", day)
@@ -480,6 +492,10 @@ final class ViewingTime {
                 case K_LANGUAGE:
                     language = String.valueOf(value);
                     applied.put(key, language);
+                    break;
+                case K_WARNING_TEXT:
+                    warningText = String.valueOf(value);
+                    applied.put(key, warningText);
                     break;
                 default:
                     unknown.put(key);
