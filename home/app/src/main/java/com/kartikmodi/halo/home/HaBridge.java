@@ -39,7 +39,8 @@ final class HaBridge {
             o.put("sdk", Build.VERSION.SDK_INT);
             o.put("port", RemoteServer.PORT);
             o.put("features", new JSONArray()
-                    .put("notify").put("tts").put("image").put("screen").put("playback").put("volume"));
+                    .put("notify").put("tts").put("image").put("screen").put("playback")
+                    .put("volume").put("viewing_time"));
             // Both are granted over ADB by install.sh; without them the TV still works, with less.
             o.put("overlay", Settings.canDrawOverlays(app));
             o.put("media_sessions", HaMediaListener.granted(app));
@@ -67,6 +68,7 @@ final class HaBridge {
         s.put("muted", audio != null && audio.isStreamMute(AudioManager.STREAM_MUSIC));
         s.put("ambient", AmbientActivity.alive());
         s.put("overlay", Settings.canDrawOverlays(app));
+        s.put("viewing", ViewingTime.brief(app));
         s.put("ts", System.currentTimeMillis());
         return s;
     }
@@ -122,6 +124,17 @@ final class HaBridge {
                 break;
             case "stop_speech":
                 Speech.stop();
+                break;
+            // Viewing time is configured over HTTP (/api/tvtime/config); these two are the shortcuts
+            // an automation is most likely to want.
+            case "viewing_reset":
+                ViewingTime.reset(app);
+                break;
+            case "viewing_off": case "viewing_disable":
+                ViewingTime.configure(app, new JSONObject().put("enabled", false));
+                break;
+            case "viewing_on": case "viewing_enable":
+                ViewingTime.configure(app, new JSONObject().put("enabled", true));
                 break;
             case "volume_set": case "set_volume":
                 setVolume(audio, request);

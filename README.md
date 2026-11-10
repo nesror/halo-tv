@@ -26,6 +26,7 @@ It installs over Wi-Fi from your computer in one command, and it's built to be i
   - [5. First run](#5-first-run)
 - [Using Halo TV](#using-halo-tv)
 - [Home Assistant](#home-assistant)
+- [Viewing time](#viewing-time)
 - [Jarvis relay and Alexa (optional)](#jarvis-relay-and-alexa-optional)
 - [Customise](#customise)
   - [Country and streaming apps](#country-and-streaming-apps)
@@ -219,6 +220,30 @@ data:
 
 Messages can carry a command too — `data: {command: pause}`, or a message of just `/screen_off` — so one
 notification can pause the film, put a photo on screen and say what happened.
+
+---
+
+## Viewing time
+
+A daily viewing clock is built in. It counts only time spent outside the launcher — the home screen,
+Ambient and message cards do not count — and needs no extra permission. By default every 30 minutes it
+pauses the video, puts up a card and says (TTS) that it is time to look into the distance for five
+minutes; at 2 h 20 m it warns that the set will go dark in ten minutes; at 2 h 30 m it turns the screen
+off. The count resets at local midnight and survives a reboot.
+
+Every threshold is live over HTTP, on the port the phone remote already uses:
+
+```bash
+curl http://<tv-ip>:8765/api/tvtime
+curl -X POST http://<tv-ip>:8765/api/tvtime/config -d '{"daily_limit_min":120}'
+curl -X POST http://<tv-ip>:8765/api/tvtime/reset
+curl -X POST http://<tv-ip>:8765/api/tvtime/adjust -d '{"minutes":20}'
+```
+
+`/api/ha/state` carries a `viewing` object, and `halo_tv.command` accepts `viewing_reset`,
+`viewing_off` and `viewing_on`. The full guide is
+[docs/viewing-time.zh-CN.md](docs/viewing-time.zh-CN.md) (Chinese), including what a sideloaded app can
+and cannot do when "turning the TV off".
 
 ---
 

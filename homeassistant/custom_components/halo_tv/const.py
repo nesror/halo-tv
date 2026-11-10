@@ -36,4 +36,8 @@ ACTIONS = {
     "mute",
     "unmute",
     "notify",
+    # Viewing-time clock: everything else is configured over /api/tvtime/config.
+    "viewing_reset",
+    "viewing_off",
+    "viewing_on",
 }

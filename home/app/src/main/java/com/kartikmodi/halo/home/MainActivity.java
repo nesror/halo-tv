@@ -290,6 +290,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         setContentView(R.layout.activity_main);
         // The phone remote's server also answers Home Assistant, so it is up from the moment Home is.
         RemoteServer.ensureStarted(this);
+        ViewingTime.init(this);
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config).
         Config cfg = Config.load(this);
@@ -613,6 +614,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onResume() {
         super.onResume();
+        ViewingTime.home(true);   // time on the launcher is not time watching a programme
         // A festival that started or ended while Home was in the background: rebuild with or without it.
         if (festive != festival.active(LocalDate.now())) {
             recreate();
@@ -729,6 +731,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onPause() {
         super.onPause();
+        ViewingTime.home(false);
         endReorder();   // Home or another app while reordering keeps the order so far
         wallpaperPlayer.stop();
         if (backdrop != null) backdrop.onPause();

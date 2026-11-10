@@ -10,7 +10,8 @@ command:
       description: >-
         pause, play, play_pause, stop, next, prev, screen_off, screen_on,
         screen_toggle, home, ambient, dismiss, say, stop_speech, volume_set,
-        volume_up, volume_down, mute, unmute or notify.
+        volume_up, volume_down, mute, unmute, notify, viewing_reset,
+        viewing_off or viewing_on.
       required: true
       example: screen_off
       selector:
@@ -36,6 +37,9 @@ command:
             - mute
             - unmute
             - notify
+            - viewing_reset
+            - viewing_off
+            - viewing_on
     text:
       name: Text
       description: For "say" - the words to read out.

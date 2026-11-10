@@ -34,6 +34,7 @@ public class HomeKeyService extends AccessibilityService {
         super.onServiceConnected();
         // Bound by the system for as long as it is enabled, so the phone remote stays reachable.
         RemoteServer.ensureStarted(this);
+        ViewingTime.init(this);
         settingsScancodes = getResources().getIntArray(R.array.settings_key_scancodes);
         // Keycodes and the panel choice can also come from a theme; a theme push restarts this service.
         Config config = Config.load(this);
@@ -102,6 +103,8 @@ public class HomeKeyService extends AccessibilityService {
         CharSequence pkg = event.getPackageName();
         CharSequence cls = event.getClassName();
         if (pkg == null || cls == null) return;
+        // Which app owns the window: the viewing clock excludes our own screens and other launchers.
+        if (pkg.length() > 0) ViewingTime.window(pkg.toString());
         // Alexa's listening screen: the remote's mic button is held. The sun or moon on the Ambient
         // screen listens along.
         if ("com.amazon.vizzini".contentEquals(pkg)) AmbientActivity.alexaListening(true);

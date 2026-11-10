@@ -275,6 +275,23 @@ final class RemoteServer {
                 if (!"POST".equals(method)) break;
                 sendJson(out, HaBridge.command(app, new JSONObject(body.isEmpty() ? "{}" : body)));
                 return;
+            // ---- Viewing time: today's count, the thresholds, and a parent's one-off allowance.
+            case "/api/tvtime":
+            case "/api/tvtime/status":
+                sendJson(out, ViewingTime.status(app));
+                return;
+            case "/api/tvtime/config":
+                if (!"POST".equals(method)) break;
+                sendJson(out, ViewingTime.configure(app, new JSONObject(body.isEmpty() ? "{}" : body)));
+                return;
+            case "/api/tvtime/reset":
+                if (!"POST".equals(method)) break;
+                sendJson(out, ViewingTime.reset(app));
+                return;
+            case "/api/tvtime/adjust":
+                if (!"POST".equals(method)) break;
+                sendJson(out, ViewingTime.adjust(app, new JSONObject(body.isEmpty() ? "{}" : body)));
+                return;
             case "/api/tv/sync":
                 if (!"POST".equals(method)) break;
                 sendJson(out, tvSync(body));
