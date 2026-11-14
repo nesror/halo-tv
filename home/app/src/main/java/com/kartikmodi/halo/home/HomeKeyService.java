@@ -17,11 +17,21 @@ import java.util.Map;
  * (Xiaomi sticks and boxes). Android TV 9 routes that key only to the system-image launcher, so once
  * the stock launcher is disabled the button does nothing. Every other key passes through untouched.
  *
+ * It also serves the phone remote: back, home, recents and notifications are performGlobalAction here,
+ * for firmware that refuses injected keys (see Keys).
+ *
  * Enable over adb:
  *   settings put secure enabled_accessibility_services com.kartikmodi.halo.home/.HomeKeyService
  *   settings put secure accessibility_enabled 1
  */
 public class HomeKeyService extends AccessibilityService {
+
+    /** The bound service, so the phone remote can ask the system for back / recents / notifications. */
+    private static HomeKeyService instance;
+
+    static HomeKeyService running() {
+        return instance;
+    }
 
     /** Remote buttons that should open Settings (config.xml, settings_key_scancodes and settings_key_keycodes). */
     private int[] settingsScancodes = new int[0];
@@ -36,6 +46,7 @@ public class HomeKeyService extends AccessibilityService {
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
+        instance = this;
         // Bound by the system for as long as it is enabled, so Home Assistant stays reachable.
         HaServer.ensureStarted(this);
         ViewingTime.init(this);
@@ -156,6 +167,18 @@ public class HomeKeyService extends AccessibilityService {
         hopPending = false;
         startActivity(new Intent(this, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        if (instance == this) instance = null;
+        return super.onUnbind(intent);
+    }
+
+    @Override
+    public void onDestroy() {
+        if (instance == this) instance = null;
+        super.onDestroy();
     }
 
     @Override

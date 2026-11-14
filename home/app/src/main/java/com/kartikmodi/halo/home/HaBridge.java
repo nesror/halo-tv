@@ -164,6 +164,72 @@ final class HaBridge {
         return new JSONObject().put("ok", ok).put("action", action).put("state", state(app));
     }
 
+    // ---- The phone remote's buttons.
+
+    /** The key each button maps to, and what to try when the TV refuses to let a key be injected. */
+    private static int keycode(String name) {
+        switch (name) {
+            case "up": return Keys.UP;
+            case "down": return Keys.DOWN;
+            case "left": return Keys.LEFT;
+            case "right": return Keys.RIGHT;
+            case "ok": case "center": case "enter": case "select": return Keys.CENTER;
+            case "back": return Keys.BACK;
+            case "menu": return Keys.MENU;
+            case "info": return 165;
+            case "recents": case "app_switch": return 187;
+            case "power": return Keys.POWER;
+            case "volume_up": return Keys.VOLUME_UP;
+            case "volume_down": return Keys.VOLUME_DOWN;
+            case "play_pause": return Keys.MEDIA_PLAY_PAUSE;
+            default: return -1;
+        }
+    }
+
+    /** The system-wide equivalent, for firmware that refuses injected keys. -1 where there is none. */
+    private static int globalAction(String name) {
+        switch (name) {
+            case "back": return android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK;
+            case "home": return android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME;
+            case "recents": case "app_switch":
+                return android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS;
+            case "notifications":
+                return android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS;
+            default: return -1;
+        }
+    }
+
+    /**
+     * One button of the remote. Keys first: they behave exactly like the remote, and only the shell
+     * may inject them, so a set that refuses falls back to the accessibility service for the actions
+     * it can perform. "via" says which path answered, so the page can explain a refusal.
+     */
+    static JSONObject key(Context app, JSONObject request) throws JSONException {
+        String name = request.optString("key", "").trim().toLowerCase(Locale.ROOT);
+        JSONObject o = new JSONObject().put("key", name).put("ok", false).put("via", "");
+
+        if ("home".equals(name)) {
+            openHome(app);
+            return o.put("ok", true).put("via", "launcher").put("state", state(app));
+        }
+        if ("power".equals(name) && request.optBoolean("menu", false)) {
+            // The power menu (shut down, restart) is a long press on this firmware.
+            new Thread(() -> Keys.pressAndHold(Keys.POWER, 1400), "HaloPowerMenu").start();
+            return o.put("ok", true).put("via", "input").put("state", state(app));
+        }
+
+        int code = keycode(name);
+        if (code > 0 && Boolean.TRUE.equals(Keys.press(code))) {
+            return o.put("ok", true).put("via", "input").put("state", state(app));
+        }
+        int action = globalAction(name);
+        if (action > 0 && Keys.global(action)) {
+            return o.put("ok", true).put("via", "accessibility").put("state", state(app));
+        }
+        return o.put("state", state(app))
+                .put("reason", "这个电视不允许模拟按键（需要系统权限），也没能由无障碍服务代做");
+    }
+
     // ---- The phone remote: what can be opened, and opening it.
 
     /** Every app the remote may open, as the launcher sees them: no duplicates, no hidden apps, no Home. */

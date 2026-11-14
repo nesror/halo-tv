@@ -56,6 +56,28 @@
   #toast.show{opacity:1;transform:translate(-50%,0)}
   .bar{height:4px;border-radius:2px;background:#2c2c34;overflow:hidden;margin-top:10px}
   .bar>div{height:100%;background:var(--accent);width:0;transition:width .3s}
+
+  /* The pad, as a sheet from the bottom: one hand, thumb on the wheel. */
+  #scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;
+    transition:opacity .2s;z-index:8}
+  #scrim.show{opacity:1;pointer-events:auto}
+  #pad{position:fixed;left:0;right:0;bottom:0;z-index:9;background:#16161a;
+    border-top:1px solid var(--line);border-radius:20px 20px 0 0;padding:16px 16px calc(18px + env(safe-area-inset-bottom));
+    transform:translateY(104%);transition:transform .24s cubic-bezier(.2,.8,.3,1);
+    max-width:620px;margin:0 auto;box-shadow:0 -12px 40px rgba(0,0,0,.5)}
+  #pad.show{transform:translateY(0)}
+  .padHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .padHead b{font-size:14px;font-weight:600;letter-spacing:.04em}
+  .padHead span{font-size:12px;color:var(--dim)}
+  .wheel{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:300px;margin:0 auto}
+  .wheel button{height:56px;font-size:17px;border-radius:14px}
+  .wheel .ok{border-color:#5a4a22;color:var(--accent);font-size:14px}
+  .wheel .gap{visibility:hidden}
+  .padRow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+  .padRow button{font-size:13px;padding:12px 0}
+  .padRow.wide{grid-template-columns:repeat(3,1fr);margin-top:8px}
+  #keyNote{font-size:11px;color:var(--dim);text-align:center;margin-top:10px;min-height:14px}
+  #pad button{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 </style>
 </head>
 <body>
@@ -101,6 +123,8 @@
     <button data-action="home" class="accent">回桌面</button>
     <button data-action="stop">停止播放</button>
   </div>
+  <div style="height:8px"></div>
+  <button id="openPad" style="width:100%;padding:15px 0;font-size:15px;letter-spacing:.08em" class="accent">遥 控 器</button>
 </div>
 
 <div class="card">
@@ -133,6 +157,38 @@
 </div>
 
 <div id="toast"></div>
+
+<div id="scrim"></div>
+<div id="pad">
+  <div class="padHead">
+    <b>遥控器</b>
+    <span id="padHint">按住可连续移动</span>
+  </div>
+  <div class="wheel">
+    <div class="gap"></div>
+    <button data-key="up" data-repeat="1">↑</button>
+    <div class="gap"></div>
+    <button data-key="left" data-repeat="1">←</button>
+    <button data-key="ok" class="ok">确定</button>
+    <button data-key="right" data-repeat="1">→</button>
+    <div class="gap"></div>
+    <button data-key="down" data-repeat="1">↓</button>
+    <div class="gap"></div>
+  </div>
+  <div class="padRow">
+    <button data-key="back">返回</button>
+    <button data-key="home">主页</button>
+    <button data-key="menu">菜单</button>
+    <button data-key="recents">最近</button>
+  </div>
+  <div class="padRow">
+    <button data-key="volume_down">音量 −</button>
+    <button data-key="volume_up">音量 +</button>
+    <button data-key="play_pause">播放/暂停</button>
+    <button data-key="power" data-hold="1">电源</button>
+  </div>
+  <div id="keyNote"></div>
+</div>
 
 <script>
 (function () {
@@ -271,6 +327,80 @@
   loadApps();
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) { refresh(); loadApps(); }
+  });
+
+  // ---- The pad: every button is one key on the TV.
+  var pad = $('pad'), scrim = $('scrim'), note = $('keyNote');
+
+  function openPad(open) {
+    pad.classList.toggle('show', open);
+    scrim.classList.toggle('show', open);
+  }
+  $('openPad').addEventListener('click', function () { openPad(true); });
+  scrim.addEventListener('click', function () { openPad(false); });
+
+  function sendKey(key, extra) {
+    var body = { key: key };
+    if (extra) for (var k in extra) body[k] = extra[k];
+    return api('/api/key', body).then(function (r) {
+      if (r.state) paint(r.state);
+      if (!r.ok) {
+        note.textContent = r.reason || '这个键电视没有接受';
+        if (/up|down|left|right/.test(key)) note.textContent = '这台电视不允许模拟方向键（需要系统权限）';
+      } else {
+        note.textContent = '';
+      }
+      return r;
+    }).catch(function () {
+      note.textContent = '没连上电视';
+      connected(false);
+    });
+  }
+
+  var repeatTimer = null, repeatDelay = null;
+
+  function stopRepeat() {
+    clearTimeout(repeatDelay);
+    clearInterval(repeatTimer);
+    repeatDelay = repeatTimer = null;
+  }
+
+  Array.prototype.forEach.call(pad.querySelectorAll('[data-key]'), function (b) {
+    var key = b.dataset.key;
+    var hold = b.dataset.hold === '1';
+    var repeat = b.dataset.repeat === '1';
+    var heldAt = 0, heldTimer = null;
+
+    function start(e) {
+      e.preventDefault();
+      if (navigator.vibrate) navigator.vibrate(8);
+      heldAt = Date.now();
+      if (hold) {
+        // Power is a short press for standby, a long one for the shutdown menu.
+        heldTimer = setTimeout(function () { heldTimer = null; sendKey(key, { menu: true }); }, 800);
+        return;
+      }
+      sendKey(key);
+      if (repeat) {
+        repeatDelay = setTimeout(function () {
+          repeatTimer = setInterval(function () { sendKey(key); }, 180);
+        }, 420);
+      }
+    }
+
+    function end() {
+      var was = heldTimer;
+      clearTimeout(heldTimer);
+      heldTimer = null;
+      stopRepeat();
+      if (hold && was) sendKey(key);   // released before the long press fired: plain standby
+    }
+
+    b.addEventListener('pointerdown', start);
+    b.addEventListener('pointerup', end);
+    b.addEventListener('pointercancel', end);
+    b.addEventListener('pointerleave', function () { if (heldTimer || repeatTimer || repeatDelay) end(); });
+    b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   });
 })();
 </script>

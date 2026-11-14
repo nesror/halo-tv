@@ -195,13 +195,20 @@ itself, from the same small server Home Assistant talks to. Nothing to install o
 
 | | |
 |---|---|
+| **遥控器** | The pad in a sheet: **↑ ↓ ← →**, **确定**, **返回**, **主页**, **菜单**, **最近**, volume, play/pause and **电源** (tap for standby, hold 0.8 s for the shutdown menu). Hold a direction to keep moving. |
 | **Now playing** | Play / pause, previous, next. They act on whatever is playing, through its media session. |
 | **Volume, screen** | Quieter / mute / louder, screen on-off, stop, and **Home** to come back to the launcher. |
 | **Message** | Title and body, 10/30/60 seconds on screen, with the recorded voice if the set has no TTS engine. |
 | **Apps** | Every app that can open on the TV (`/api/apps`), one tap to launch it. The stock launcher and `hidden_apps` stay hidden, as on Home. |
 | **Today's viewing** | The clock the parents' rules count, and the limit it is heading for. |
 
-The page is `app/src/main/assets/remote.html`; the endpoints behind it are `/api/apps`,
+The buttons are real keys, not a shortcut list: `/api/key` runs `/system/bin/input keyevent`, so
+**↑ ↓ ← → 和 确定 behave exactly like the remote** on firmware that lets an app inject keys (this
+MiTV3S does). Android gives that right to the shell only, so on a stricter set the page says so, and
+the few system-wide buttons (**返回**, **主页**, **最近**) fall back to the accessibility service that
+already handles the Home button.
+
+The page is `app/src/main/assets/remote.html`; the endpoints behind it are `/api/key`, `/api/apps`,
 `/api/launch`, plus the Home Assistant ones below. `http://<tv-ip>:8765/api` prints them all.
 
 ---
@@ -441,6 +448,7 @@ home/                  Home (Android app com.kartikmodi.halo.home)
   java/.../TvApps.java        finds the set's own Settings and source apps
   java/.../Compat.java        the newer APIs Home uses, wrapped for API 23
   java/.../Voice.java         the recorded reminder lines, for TVs with no TTS engine
+  java/.../Keys.java          the remote's buttons: /system/bin/input, with accessibility as the fallback
   java/.../HomeKeyService.java  Home button, for firmware that keeps its own launcher
 tonight/               Tonight (Android app com.kartikmodi.halo.tonight)
   secrets.properties.example     the keys Tonight reads at build time

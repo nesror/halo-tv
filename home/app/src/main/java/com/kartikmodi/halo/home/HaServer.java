@@ -197,15 +197,20 @@ final class HaServer {
                                 + "GET  /               the phone remote (HTML)\n"
                                 + "GET  /api/apps       the apps the remote can open\n"
                                 + "POST /api/launch     {\"package\": \"com.example.app\"}\n"
+                                + "POST /api/key        {\"key\": \"up|down|left|right|ok|back|home|menu|power\"}\n"
                                 + "GET  /api/ha/info     what this TV is\n"
                                 + "GET  /api/ha/state    what it is doing\n"
                                 + "POST /api/ha/notify   {\"message\": \"...\", \"text\": \"...\", \"image\": \"url\"}\n"
                                 + "POST /api/ha/command  {\"action\": \"pause|screen_off|volume_set|home|...\"}\n"
                                 + "GET  /api/tvtime      today's viewing time\n").getBytes(StandardCharsets.UTF_8));
                 return;
-            // ---- The remote's own two endpoints.
+            // ---- The remote's own endpoints: its buttons, and the apps it can open.
             case "/api/apps":
                 sendJson(out, HaBridge.apps(app));
+                return;
+            case "/api/key":
+                if (!"POST".equals(method)) break;
+                sendJson(out, HaBridge.key(app, new JSONObject(body.isEmpty() ? "{}" : body)));
                 return;
             case "/api/launch":
                 if (!"POST".equals(method)) break;
