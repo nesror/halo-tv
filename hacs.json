@@ -1,0 +1,7 @@
+{
+  "name": "Halo TV",
+  "render_readme": false,
+  "zip_release": true,
+  "filename": "halo_tv.zip",
+  "homeassistant": "2024.7.0"
+}

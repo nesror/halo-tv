@@ -1,0 +1,40 @@
+name: HACS release
+
+# HACS installs a zip release: hacs.json names halo_tv.zip, and the zip holds
+# custom_components/halo_tv/... at its root. Push a tag (v2.7.0) and this packs the integration and
+# attaches it to that tag's release.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches manifest.json
+        run: |
+          version="$(python3 -c "import json;print(json.load(open('homeassistant/custom_components/halo_tv/manifest.json'))['version'])")"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$version" != "$tag" ]; then
+            echo "manifest.json says $version but the tag is $tag" >&2
+            exit 1
+          fi
+
+      - name: Build halo_tv.zip
+        run: |
+          cd homeassistant
+          zip -q -r ../halo_tv.zip custom_components/halo_tv \
+            -x '*/__pycache__/*' -x '*.pyc' -x '*/.DS_Store'
+          unzip -l ../halo_tv.zip | tail -3
+
+      - name: Attach it to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: halo_tv.zip
+          generate_release_notes: true

@@ -51,7 +51,12 @@ The `media_player` also carries, as attributes, whether a message is showing, ho
 
 ## Install the integration
 
-The component lives in this repository, under `homeassistant/custom_components/halo_tv`.
+**With HACS.** HACS → Integrations → ⋮ → **Custom repositories** →
+`https://github.com/nesror/halo-tv`, category **Integration** → add, then search **Halo TV** and
+download it → **restart Home Assistant**. HACS takes the integration from the latest release
+(`halo_tv.zip`, named in `hacs.json`), so it can update itself like any other HACS integration.
+
+**By hand.** The component lives in this repository, under `homeassistant/custom_components/halo_tv`.
 
 ```bash
 # on the machine running Home Assistant

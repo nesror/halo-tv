@@ -22,3 +22,4 @@ __pycache__/
 
 # Python test caches
 **/.pytest_cache/
+dist/

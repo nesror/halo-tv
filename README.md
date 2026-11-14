@@ -194,6 +194,18 @@ answers on port **8765** of the TV's Wi-Fi address — no cloud, no MQTT broker,
 The component is in `homeassistant/custom_components/halo_tv`; the full guide is
 [docs/home-assistant.md](docs/home-assistant.md).
 
+**With HACS** (it is its own integration, installed from this repo's releases):
+
+1. HACS → Integrations → ⋮ → **Custom repositories** → `https://github.com/nesror/halo-tv`, category
+   **Integration**.
+2. Search **Halo TV**, download it, restart Home Assistant.
+3. **Settings → Devices & services → Add integration → Halo TV**.
+
+`hacs.json` points HACS at `halo_tv.zip` on the latest release, which `tools/hacs-release.sh 2.7.0`
+builds and uploads (the workflow in `.github/workflows/hacs-release.yml` does the same on a tag).
+
+**By hand**, without HACS:
+
 ```bash
 cp -r homeassistant/custom_components/halo_tv <config>/custom_components/   # then restart Home Assistant
 ```

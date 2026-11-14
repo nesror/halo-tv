@@ -36,7 +36,13 @@
    TV_HOST=<电视IP> tools/venv/bin/python tools/tv.py 'cmd notification allow_listener com.kartikmodi.halo.home/.HaMediaListener'
    ```
 
-2. 把集成复制到 Home Assistant：
+2. 装集成，两种方式任选：
+
+   **用 HACS（推荐，能自动更新）**：HACS → 集成 → 右上角 ⋮ → **自定义存储库** →
+   `https://github.com/nesror/halo-tv`，类型选 **Integration** → 添加 → 在 HACS 里搜 **Halo TV**
+   → 下载 → 重启 Home Assistant。HACS 从最新 release 取 `halo_tv.zip`（由 `hacs.json` 指定）。
+
+   **手动复制**：
 
    ```bash
    cp -r homeassistant/custom_components/halo_tv <配置目录>/custom_components/
