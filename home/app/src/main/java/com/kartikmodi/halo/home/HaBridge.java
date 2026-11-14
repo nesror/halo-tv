@@ -17,8 +17,8 @@ import java.util.Locale;
  * Everything Home Assistant asks of the TV, in one place: what the TV is doing, a message to put on it,
  * and the handful of things it can be told to do (pause, screen off, volume...).
  *
- * Reached over the little web server the phone remote already uses (RemoteServer, port 8765), so there is
- * nothing new to open on the TV and nothing to keep alive: the launcher's own process answers.
+ * Reached over the launcher's own little web server (HaServer, port 8765), so there is nothing new to
+ * open on the TV and nothing to keep alive: the launcher's own process answers.
  */
 final class HaBridge {
 
@@ -37,7 +37,7 @@ final class HaBridge {
             o.put("manufacturer", Build.MANUFACTURER);
             o.put("android", Build.VERSION.RELEASE.isEmpty() ? "API " + Build.VERSION.SDK_INT : Build.VERSION.RELEASE);
             o.put("sdk", Build.VERSION.SDK_INT);
-            o.put("port", RemoteServer.PORT);
+            o.put("port", HaServer.PORT);
             o.put("features", new JSONArray()
                     .put("notify").put("tts").put("image").put("screen").put("playback")
                     .put("volume").put("viewing_time"));
@@ -66,7 +66,6 @@ final class HaBridge {
         s.put("volume_raw", level);
         s.put("volume_max", max);
         s.put("muted", audio != null && audio.isStreamMute(AudioManager.STREAM_MUSIC));
-        s.put("ambient", AmbientActivity.alive());
         s.put("overlay", Settings.canDrawOverlays(app));
         s.put("viewing", ViewingTime.brief(app));
         s.put("ts", System.currentTimeMillis());
@@ -88,7 +87,7 @@ final class HaBridge {
         return out;
     }
 
-    /** pause, play, play_pause, stop, next, prev, screen_off, screen_on, screen_toggle, home, ambient,
+    /** pause, play, play_pause, stop, next, prev, screen_off, screen_on, screen_toggle, home,
      *  dismiss, say, volume_set, volume_mute, mute, unmute, volume_up, volume_down, notify. */
     static JSONObject command(Context app, JSONObject request) throws JSONException {
         String action = request.optString("action", request.optString("command", request.optString("do", "")))
@@ -111,9 +110,6 @@ final class HaBridge {
                 break;
             case "home": case "launcher":
                 openHome(app);
-                break;
-            case "ambient":
-                RemoteServer.startAmbient(app);
                 break;
             case "dismiss": case "clear":
                 MessageActivity.dismissAll();

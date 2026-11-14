@@ -26,7 +26,6 @@ ACTIONS = {
     "screen_on",
     "screen_toggle",
     "home",
-    "ambient",
     "dismiss",
     "say",
     "stop_speech",

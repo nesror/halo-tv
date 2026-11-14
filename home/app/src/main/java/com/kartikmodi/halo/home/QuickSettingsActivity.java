@@ -25,7 +25,10 @@ public final class QuickSettingsActivity extends Activity {
         setContentView(R.layout.activity_quick_settings);
         findViewById(R.id.scrim).setOnClickListener(v -> finish());
         LinearLayout rows = findViewById(R.id.rows);
-        addRow(rows, R.drawable.ic_settings, R.string.tv_settings, 0, new Intent(Settings.ACTION_SETTINGS));
+        // The set's own settings app where there is one: MIUI TV answers no Settings intent at all.
+        Intent tvSettings = TvApps.settingsIntent(this);
+        addRow(rows, R.drawable.ic_settings, R.string.tv_settings, 0,
+                tvSettings != null ? tvSettings : new Intent(Settings.ACTION_SETTINGS));
         addRow(rows, R.drawable.ic_picture, R.string.quick_picture, 0, new Intent(Settings.ACTION_DISPLAY_SETTINGS));
         addRow(rows, R.drawable.ic_wifi, R.string.quick_network, 0, new Intent(Settings.ACTION_WIFI_SETTINGS));
         addRow(rows, R.drawable.ic_apps, R.string.quick_apps, R.string.quick_apps_hint,

@@ -70,7 +70,7 @@ SERVICE_SCHEMA = {
                 "tts: true to read the message out loud. "
                 "duration: seconds on screen, 0 to stay until dismissed. "
                 "language: a tag like en-GB or zh-CN for the voice. "
-                "command: pause, play, screen_off, screen_on, ambient and the rest."
+                "command: pause, play, screen_off, screen_on and the rest."
             ),
             "example": {"image": "http://homeassistant.local:8123/local/photo.jpg", "tts": True},
             "selector": {"object": {}},

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Halo TV installer: builds Home (with Ambient) and Tonight, and installs them on an Android TV,
+# Halo TV installer: builds Home and Tonight, and installs them on an Android TV,
 # Google TV or Fire TV over Wi-Fi ADB. Keys are asked for here (or read from the environment) and
 # written only to git-ignored files on this computer.
 #
@@ -9,7 +9,7 @@
 #
 # Options:
 #   --tv <ip>             the TV's IP address (or TV_HOST=)
-#   --home-only           install Home + Ambient only
+#   --home-only           install Home only
 #   --tonight-only        install Tonight only
 #   --keep-stock          never disable the stock launcher; the Home button is redirected instead
 #   --input-key-service   also route the remote's Input button to Halo TV's input switcher
@@ -175,9 +175,9 @@ enable_service() {   # appends to enabled_accessibility_services without droppin
   tv "s=\$(settings get secure enabled_accessibility_services); case \"\$s\" in *$HOME_PKG/.$1*) ;; null|'') settings put secure enabled_accessibility_services $svc ;; *) settings put secure enabled_accessibility_services \"\$s:$svc\" ;; esac; settings put secure accessibility_enabled 1; echo $1 enabled"
 }
 
-# ------------------------------------------------------------------ 5. Home + Ambient
+# ------------------------------------------------------------------ 5. Home
 if [ "$DO_HOME" = 1 ]; then
-  bold "5/7  Installing Home + Ambient"
+  bold "5/7  Installing Home"
   install_apk home/app/build/outputs/apk/release/app-release.apk halo-home
   START_OUT=$(tv "am start -W -n $HOME_PKG/.MainActivity")
   echo "$START_OUT"
@@ -248,10 +248,7 @@ fi
 
 bold "Done"
 [ "$DO_HOME" = 1 ] && cat <<EOF
-- Press Home on the remote: Halo TV opens. Ambient is the AMBIENT tile on the dock.
-- Phone dashboard (music, Jarvis, settings): open http://$TV_HOST:8765 on a phone on the same Wi-Fi,
-  or scan the QR code on the Ambient screen.
-- Optional voice assistant (Jarvis + Alexa): see README, "Jarvis relay", or run jarvis/setup-relay.sh.
+- Press Home on the remote: Halo TV opens.
 EOF
 [ "$DO_TONIGHT" = 1 ] && echo "- Tonight: the TONIGHT. button at the top of Home. Its search index builds in the background over the first hour."
 echo "- To remove everything: ./uninstall.sh"

@@ -110,8 +110,11 @@ public final class LauncherSettingsActivity extends Activity {
             Toast.makeText(this, R.string.home_settings_help, Toast.LENGTH_LONG).show();
             open(new Intent(Settings.ACTION_HOME_SETTINGS));
         });
-        findViewById(R.id.tvSettingsChoice).setOnClickListener(v ->
-                open(new Intent(Settings.ACTION_SETTINGS)));
+        findViewById(R.id.tvSettingsChoice).setOnClickListener(v -> {
+            // The set's own settings app where there is one: MIUI TV answers no Settings intent at all.
+            Intent tvSettings = TvApps.settingsIntent(this);
+            open(tvSettings != null ? tvSettings : new Intent(Settings.ACTION_SETTINGS));
+        });
         refresh();
         columnChoices[Math.max(0, Math.min(columns - 4, 3))].requestFocus();
     }

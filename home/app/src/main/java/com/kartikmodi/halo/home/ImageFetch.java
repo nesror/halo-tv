@@ -77,6 +77,6 @@ final class ImageFetch {
         }
         java.io.File file = new java.io.File(source);
         if (!file.isFile()) return null;
-        return java.nio.file.Files.readAllBytes(file.toPath());
+        return Compat.readAllBytes(file);
     }
 }

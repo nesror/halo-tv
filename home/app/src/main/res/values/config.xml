@@ -32,6 +32,8 @@
 
     <!-- Apps never shown as tiles (e.g. the Live TV app, which the Inputs menu already covers). -->
     <string-array name="hidden_apps">
+        <!-- The stock MIUI TV launcher: Halo TV replaces it, so its tile would only reopen the same screen. -->
+        <item>com.mitv.tvhome</item>
         <item>com.mediatek.wwtv.tvcenter</item>
         <item>com.mitv.gallery</item>
         <item>com.mediatek.opapp</item>
@@ -80,10 +82,34 @@
     <string name="source_panel_service" translatable="false"></string>
     <string name="source_panel_action" translatable="false"></string>
 
+    <!-- The set's own source popup, sent as a broadcast: "package:action". MIUI TV shows its HDMI / AV /
+         TV / DTMB picker for com.xiaomi.mitv.settings.INPUTSOURCE_POPUP, which is the real switcher on a
+         set with no TvInputManager. Takes priority over everything below. Leave empty to omit. -->
+    <string name="source_popup_broadcast" translatable="false">com.xiaomi.mitv.settings:com.xiaomi.mitv.settings.INPUTSOURCE_POPUP</string>
+
+    <!-- Sources the pill offers when the firmware reports no TvInputManager inputs at all (MIUI TV on the
+         MiTV3S: it has no TV input framework, so the Inputs menu was empty and the pill did nothing). Each
+         row is "label=component" and opens that screen of the set's own TV app, which is where its sources
+         live. Rows whose component does not resolve are dropped, so one list can cover several firmwares. -->
+    <string-array name="source_rows" translatable="false">
+        <item>电视直播=com.xiaomi.mitv.tvplayer/com.xiaomi.mitv.tvplayer.AtvActivity</item>
+        <item>数字电视=com.xiaomi.mitv.tvplayer/com.xiaomi.mitv.tvplayer.dtmb.DTMBActivity</item>
+        <item>外接信号源=com.xiaomi.mitv.tvplayer/com.xiaomi.mitv.tvplayer.ExternalSourceActivity</item>
+        <item>AV=com.xiaomi.mitv.tvplayer/com.xiaomi.mitv.tvplayer.AuxActivity</item>
+        <item>同轴=com.xiaomi.mitv.tvplayer/com.xiaomi.mitv.tvplayer.spdifin.SpdifinActivity</item>
+    </string-array>
+
     <!-- Inputs menu: HDMI and AV rows normally open with ACTION_VIEW on the input's channel URI, which the
          Live TV app handles. Where nothing answers that, this action is sent with the same URI instead
          (XGIMI projectors: com.xgimi.action.hdmiPlayer). Leave empty to omit. -->
     <string name="input_action" translatable="false"></string>
+
+    <!-- Some firmware refuses to let adb disable its launcher (MIUI TV on the MiTV3S answers
+         SecurityException to pm disable-user because its launcher runs as the system uid, and the set has
+         no root), so Home always lands on the stock launcher. Name that package here and HomeKeyService
+         sends the Home button on to Halo TV the moment the stock launcher's window appears. The stock
+         home flashes for a moment; leave this empty on sets whose launcher can be disabled. -->
+    <string name="home_forward_package" translatable="false">com.mitv.tvhome</string>
 
     <!-- Remote buttons that open Settings, by Linux scancode (install.sh). Remotes
          that send KEYCODE_SETTINGS need no entry. Some send a code Android does not map: the Xiaomi/Fengmi

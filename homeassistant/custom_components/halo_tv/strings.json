@@ -35,11 +35,11 @@
   "services": {
     "command": {
       "name": "Send a command",
-      "description": "Tell a Halo TV to do one thing: pause, go dark, open Ambient, read something out loud.",
+      "description": "Tell a Halo TV to do one thing: pause, go dark, read something out loud.",
       "fields": {
         "action": {
           "name": "Command",
-          "description": "pause, play, play_pause, stop, next, prev, screen_off, screen_on, screen_toggle, home, ambient, dismiss, say, stop_speech, volume_set, volume_up, volume_down, mute or unmute."
+          "description": "pause, play, play_pause, stop, next, prev, screen_off, screen_on, screen_toggle, home, dismiss, say, stop_speech, volume_set, volume_up, volume_down, mute or unmute."
         },
         "text": {
           "name": "Text",

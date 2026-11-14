@@ -245,6 +245,23 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         leanbackPackages = tvPackages;
         Set<String> added = LibraryApps.load(ctx);
         Set<String> removed = LibraryApps.loadRemoved(ctx);
+        // Firmware whose apps are ordinary phone-style APKs (Xiaomi MIUI TV declares no LEANBACK_LAUNCHER
+        // entry on anything, not even its own store) would otherwise show an almost empty Home. Every
+        // launchable app counts as a TV app here; hidden_apps and the library's removals still win, so the
+        // owner can drop a tile as usual.
+        Set<String> phonePackages = new HashSet<>();
+        Set<String> knownComponents = new HashSet<>();
+        for (ResolveInfo ri : found) {
+            if (ri.activityInfo != null) {
+                knownComponents.add(ri.activityInfo.packageName + '/' + ri.activityInfo.name);
+            }
+        }
+        for (ResolveInfo ri : pm.queryIntentActivities(
+                new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)) {
+            if (ri.activityInfo == null) continue;
+            phonePackages.add(ri.activityInfo.packageName);
+            if (knownComponents.add(ri.activityInfo.packageName + '/' + ri.activityInfo.name)) found.add(ri);
+        }
         // A theme's dock is a promise: the packages it names stay on the home screen even when the app
         // declares no leanback entry - an APK built for phones, or a set whose player ships only a phone
         // activity. A removal from the library still wins, so this cannot resurrect a tile the owner dropped.
@@ -267,10 +284,11 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         for (ResolveInfo ri : found) {
             if (ri.activityInfo == null) continue;
             String pkg = ri.activityInfo.packageName;
-            // The launcher's own tiles: only the Ambient screen, never Home itself.
-            boolean ownHome = pkg.equals(ctx.getPackageName()) && !ri.activityInfo.name.equals(AmbientActivity.class.getName());
+            // The launcher's own tiles: Home shows the apps, never itself.
+            boolean ownHome = pkg.equals(ctx.getPackageName());
             if (ownHome || !ri.activityInfo.exported
-                    || !LibraryApps.visible(tvPackages.contains(pkg), hidden.contains(pkg), wanted.contains(pkg), removed.contains(pkg))) continue;
+                    || !LibraryApps.visible(tvPackages.contains(pkg) || phonePackages.contains(pkg),
+                            hidden.contains(pkg), wanted.contains(pkg), removed.contains(pkg))) continue;
             ComponentName component = new ComponentName(pkg, ri.activityInfo.name);
             Cards.Card card = cardByPkg.get(pkg);
             if (card != null && !card.component.equals(component)) continue;   // the card stands in for this tile
@@ -634,18 +652,20 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         h.banner.setImageDrawable(null);
         h.banner.setVisibility(View.GONE);
         if (art != null && art.startsWith("wordmark:")) {
-            if (michroma == null) michroma = ctx.getResources().getFont(R.font.michroma);
+            if (michroma == null) michroma = Compat.font(ctx, R.font.michroma);
             h.label.setTypeface(michroma);
             h.label.setLetterSpacing(0.38f);
             h.label.setTextSize(TypedValue.COMPLEX_UNIT_PX, cardH * 0.165f);
             h.label.setText(art.substring("wordmark:".length()));
         } else {
-            if (outfitLight == null) outfitLight = ctx.getResources().getFont(R.font.outfit_light);
+            if (outfitLight == null) outfitLight = Compat.font(ctx, R.font.outfit_light);
             h.label.setTypeface(outfitLight);
             h.label.setLetterSpacing(0f);
-            h.label.setTextSize(TypedValue.COMPLEX_UNIT_PX, cardH * 0.42f);
+            // The name's first four characters, one size for every tile so the row stays even.
             String l = e.label.trim();
-            h.label.setText(l.isEmpty() ? "" : l.substring(0, l.offsetByCodePoints(0, 1)).toUpperCase());
+            int shown = l.isEmpty() ? 0 : Math.min(4, l.codePointCount(0, l.length()));
+            h.label.setTextSize(TypedValue.COMPLEX_UNIT_PX, cardH * 0.27f);
+            h.label.setText(shown == 0 ? "" : l.substring(0, l.offsetByCodePoints(0, shown)));
         }
         h.label.setTextColor(0xFFFFFFFF);
         h.label.setVisibility(View.VISIBLE);

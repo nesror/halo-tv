@@ -4,6 +4,7 @@ import android.content.Context;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import android.os.Build;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
@@ -87,7 +88,7 @@ final class Speech {
         }
         tts.setSpeechRate(1.0f);
         tts.setAudioAttributes(new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                .setUsage(Compat.speechUsage())
                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                 .build());
         hold(true);
@@ -108,26 +109,37 @@ final class Speech {
 
     private static void hold(boolean on) {
         if (audio == null) return;
-        if (on) {
-            if (focus == null) {
-                focus = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
-                        .setAudioAttributes(new AudioAttributes.Builder()
-                                .setUsage(AudioAttributes.USAGE_ASSISTANT)
-                                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                                .build())
-                        .setOnAudioFocusChangeListener(c -> { })
-                        .build();
-            }
-            if (audio.requestAudioFocus(focus) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) focusHeld = true;
-        } else {
+        if (!on) {
             release();
+            return;
         }
+        if (Build.VERSION.SDK_INT < 26) {
+            // AudioFocusRequest is API 26: ask for the same transient ducking focus the old way.
+            if (audio.requestAudioFocus(LEGACY_FOCUS, AudioManager.STREAM_MUSIC,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                focusHeld = true;
+            }
+            return;
+        }
+        if (focus == null) {
+            focus = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                    .setAudioAttributes(new AudioAttributes.Builder()
+                            .setUsage(Compat.speechUsage())
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                            .build())
+                    .setOnAudioFocusChangeListener(c -> { })
+                    .build();
+        }
+        if (audio.requestAudioFocus(focus) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) focusHeld = true;
     }
+
+    private static final AudioManager.OnAudioFocusChangeListener LEGACY_FOCUS = c -> { };
 
     private static void release() {
         if (audio == null || !focusHeld) return;
         try {
-            audio.abandonAudioFocusRequest(focus);
+            if (Build.VERSION.SDK_INT >= 26) audio.abandonAudioFocusRequest(focus);
+            else audio.abandonAudioFocus(LEGACY_FOCUS);
         } catch (RuntimeException ignored) {
         }
         focusHeld = false;

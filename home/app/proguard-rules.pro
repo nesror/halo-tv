@@ -2,8 +2,3 @@
 # AndroidX code, not from renaming, and readable stack traces matter more in a sideloaded app
 # where crash reports arrive as screenshots.
 -dontobfuscate
-
-# The Ambient screen's page calls these by name through addJavascriptInterface.
--keepclassmembers class * {
-    @android.webkit.JavascriptInterface <methods>;
-}

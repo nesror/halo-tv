@@ -2,14 +2,14 @@
 command:
   name: Send a command
   description: >-
-    Tell a Halo TV to do one thing: pause, play, go dark, light up, open Ambient,
-    read something out loud, or show a message.
+    Tell a Halo TV to do one thing: pause, play, go dark, light up, read
+    something out loud, or show a message.
   fields:
     action:
       name: Command
       description: >-
         pause, play, play_pause, stop, next, prev, screen_off, screen_on,
-        screen_toggle, home, ambient, dismiss, say, stop_speech, volume_set,
+        screen_toggle, home, dismiss, say, stop_speech, volume_set,
         volume_up, volume_down, mute, unmute, notify, viewing_reset,
         viewing_off or viewing_on.
       required: true
@@ -27,7 +27,6 @@ command:
             - screen_on
             - screen_toggle
             - home
-            - ambient
             - dismiss
             - say
             - stop_speech

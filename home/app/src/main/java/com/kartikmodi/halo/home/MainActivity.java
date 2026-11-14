@@ -11,6 +11,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -116,6 +118,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** "lens", "video" or "still": see config.xml glass_backdrop. */
     private String glassMode = "lens";
     private MotionVideo motionVideo;
+    /** "label=component" rows for the source pill on firmware with no TvInputManager list (config.xml source_rows). */
+    private String[] sourceRowSpecs = new String[0];
+    /** The set's own source popup, sent as a broadcast: package and action (config.xml source_popup_broadcast). */
+    private String sourcePopupPackage = "";
+    private String sourcePopupAction = "";
     private DockDecoration dockDecoration;
     /** The focus highlight's colour when nothing special is on: white, or the glass accent. */
     private int restAccent;
@@ -288,14 +295,22 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        // The phone remote's server also answers Home Assistant, so it is up from the moment Home is.
-        RemoteServer.ensureStarted(this);
+        // The Home Assistant bridge answers on this TV's Wi-Fi address from the moment Home is up.
+        HaServer.ensureStarted(this);
         ViewingTime.init(this);
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config).
         Config cfg = Config.load(this);
         settingsKeycodes = cfg.settingsKeycodes;
         settingsKeyPanel = cfg.settingsKeyPanel;
+        sourceRowSpecs = getResources().getStringArray(R.array.source_rows);
+        // "package:action": the set's own source popup, where the firmware has one.
+        String popup = getString(R.string.source_popup_broadcast).trim();
+        int colon = popup.indexOf(':');
+        if (colon > 0) {
+            sourcePopupPackage = popup.substring(0, colon).trim();
+            sourcePopupAction = popup.substring(colon + 1).trim();
+        }
         COLUMNS = cfg.columns;
         animations = cfg.animations;
         advancedEffects = cfg.animations && cfg.advancedEffects;
@@ -326,12 +341,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         ambient = findViewById(R.id.ambient);
         // The glow is one bitmap, so its alpha can be applied while drawing it. Otherwise every frame of
         // a fade renders it into a full-screen offscreen buffer first.
-        ambient.forceHasOverlappingRendering(false);
+        Compat.noOverlap(ambient);
         heroName = findViewById(R.id.heroName);
         hero = findViewById(R.id.hero);
         // The hero is now a group (name, and the cinematic lines): without this every fade of the default
         // shelf would render it through an offscreen buffer first, as the glow above notes.
-        hero.forceHasOverlappingRendering(false);
+        Compat.noOverlap(hero);
         heroMeta = findViewById(R.id.heroMeta);
         heroDots = findViewById(R.id.heroDots);
         heroArt = findViewById(R.id.heroArt);
@@ -503,13 +518,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         btnInputs = findViewById(R.id.btnInputs);
         addTonightButton();
         View btnSettings = findViewById(R.id.btnSettings);
-        btnInputs.setOnClickListener(v -> showInputs());
+        btnInputs.setOnClickListener(v -> switchSource());
+        btnInputs.setOnLongClickListener(v -> {
+            showInputs();
+            return true;
+        });
         btnWifi.setOnClickListener(v -> openNetworkPill());
         btnWifi.setOnLongClickListener(v -> {
             open(systemIntent(Settings.ACTION_WIFI_SETTINGS));
             return true;
         });
-        btnSettings.setOnClickListener(v -> open(systemIntent(Settings.ACTION_SETTINGS)));
+        btnSettings.setOnClickListener(v -> openTvSettings());
         btnReorder = findViewById(R.id.btnReorder);
         btnReorder.setOnClickListener(v -> toggleReorder());
         btnReorder.setVisibility(cfg.reorderButton ? View.VISIBLE : View.GONE);
@@ -568,7 +587,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
         if (tim != null) tim.registerCallback(inputCallback, handler);
         if (cm != null) {
-            cm.registerDefaultNetworkCallback(networkCallback);
+            // registerDefaultNetworkCallback is API 24; below that watch any internet-capable network.
+            if (Build.VERSION.SDK_INT >= 24) cm.registerDefaultNetworkCallback(networkCallback);
+            else cm.registerNetworkCallback(new NetworkRequest.Builder()
+                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .build(), networkCallback);
             cm.registerNetworkCallback(new NetworkRequest.Builder()
                     .addTransportType(NetworkCapabilities.TRANSPORT_VPN)
                     .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
@@ -791,8 +814,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         for (int code : settingsKeycodes) {
             if (event.getKeyCode() != code) continue;
             if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
-                open(settingsKeyPanel ? new Intent(this, QuickSettingsActivity.class)
-                        : systemIntent(Settings.ACTION_SETTINGS));
+                if (settingsKeyPanel) {
+                    startActivity(new Intent(this, QuickSettingsActivity.class));
+                } else {
+                    openTvSettings();
+                }
             }
             return true;
         }
@@ -1164,8 +1190,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // Plain glass: the still gradient, with the video on the video hardware behind it in "video" mode.
             root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                     new int[]{glassBackground, blend(glassBackground, glassTint, 0.18f), glassBackground}));
-            if ("video".equals(glassMode) && video.isFile()) {
-                motionVideo = new MotionVideo(this, video);
+            if ("video".equals(glassMode) && video.isFile() && video.canRead()) {
+                motionVideo = new MotionVideo(this, video, () -> {
+                    // No frames: drop the surface so the gradient behind it is what the glass refracts.
+                    if (motionVideo == null) return;
+                    root.removeView(motionVideo);
+                    motionVideo = null;
+                });
                 root.addView(motionVideo, 0, new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             }
@@ -1453,7 +1484,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroDots.setVisibility(View.VISIBLE);
         heroArt.setVisibility(View.VISIBLE);
         // One stretched bitmap: apply its alpha while drawing instead of through an offscreen buffer.
-        heroArt.forceHasOverlappingRendering(false);
+        Compat.noOverlap(heroArt);
         View scrim = findViewById(R.id.heroScrim);
         scrim.setBackground(scrimDrawable());
         scrim.setVisibility(View.VISIBLE);
@@ -2205,6 +2236,100 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         open(i != null ? i : systemIntent(Settings.ACTION_WIFI_SETTINGS));
     }
 
+    /**
+     * The Settings pill opens the set's own settings screen. MIUI TV ships its settings as an ordinary app
+     * and answers no Settings intent, so that app is started first; firmware that handles the standard
+     * intent (and Fire OS's settings grid) keeps going through systemIntent.
+     */
+    private void openTvSettings() {
+        Intent own = TvApps.settingsIntent(this);
+        open(own != null ? own : systemIntent(Settings.ACTION_SETTINGS));
+    }
+
+    /**
+     * The source pill switches the video source (HDMI, AV, tuner). Firmware whose TvInputManager lists
+     * inputs gets the launcher's own list of them; firmware that lists none - MIUI TV on the MiTV3S keeps
+     * its sources inside its TV app - has that app opened instead. A configured source panel wins on both.
+     */
+    private void switchSource() {
+        // The set's own picker first: on MIUI TV it is the only complete list (HDMI 1-3, AV, TV, DTMB),
+        // and it opens in front of Home without taking the launcher away.
+        if (hasSourcePopup()) {
+            Intent popup = new Intent(sourcePopupAction).setPackage(sourcePopupPackage);
+            try {
+                sendBroadcast(popup);
+                return;
+            } catch (RuntimeException ignored) {
+                // Fall through to the launcher's own list.
+            }
+        }
+        if (!sourcePanelService.isEmpty() || !sourcePanelAction.isEmpty()) {
+            openSourcePanel();
+            return;
+        }
+        if (hasPassthroughInputs() || vendorSourceCount() > 0) {
+            showInputs();
+            return;
+        }
+        Intent source = TvApps.sourceIntent(this, liveTvIntent());
+        if (source != null) {
+            open(source);
+            return;
+        }
+        Toast.makeText(this, R.string.no_inputs, Toast.LENGTH_SHORT).show();
+    }
+
+    /** Whether TvInputManager knows any HDMI/AV input, i.e. whether the Inputs menu has rows to show. */
+    private boolean hasPassthroughInputs() {
+        TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
+        if (tim == null) return false;
+        for (TvInputInfo info : tim.getTvInputList()) {
+            // Inputs hidden in Settings > Inputs are left out of the menu, so they don't count here either.
+            if (info.isPassthroughInput() && !Compat.isHidden(this, info)) return true;
+        }
+        return false;
+    }
+
+    /** Whether this firmware has a receiver for the configured source popup broadcast. */
+    private boolean hasSourcePopup() {
+        if (sourcePopupAction.isEmpty()) return false;
+        Intent popup = new Intent(sourcePopupAction);
+        if (!sourcePopupPackage.isEmpty()) popup.setPackage(sourcePopupPackage);
+        return !getPackageManager().queryBroadcastReceivers(popup, 0).isEmpty();
+    }
+
+    /**
+     * The set's own source screens (config.xml source_rows), for firmware with no TvInputManager list: MIUI
+     * TV keeps HDMI, AV, coaxial and the tuners inside its TV app, one activity per source. Rows whose
+     * activity this firmware does not have are skipped, so one list covers several sets.
+     */
+    private Intent vendorSource(String spec) {
+        int eq = spec.indexOf('=');
+        if (eq <= 0) return null;
+        ComponentName c = ComponentName.unflattenFromString(spec.substring(eq + 1).trim());
+        if (c == null) return null;
+        Intent screen = new Intent(Intent.ACTION_MAIN).setComponent(c);
+        return getPackageManager().resolveActivity(screen, 0) != null ? screen : null;
+    }
+
+    private int vendorSourceCount() {
+        int count = 0;
+        for (String spec : sourceRowSpecs) if (vendorSource(spec) != null) count++;
+        return count;
+    }
+
+    private int addVendorSourceRows(LinearLayout rows, PopupWindow popup) {
+        int added = 0;
+        for (String spec : sourceRowSpecs) {
+            final Intent screen = vendorSource(spec);
+            if (screen == null) continue;
+            addInputRow(rows, popup, R.drawable.ic_input, spec.substring(0, spec.indexOf('=')).trim(), -1,
+                    () -> open(screen));
+            added++;
+        }
+        return added;
+    }
+
 
     /**
      * China-market MIUI TV firmware answers no standard Settings intents at all; open Xiaomi's own
@@ -2227,19 +2352,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         return new Intent(standardAction);   // nothing found: let open() show the can't-open toast
     }
 
-    /** Hides the Inputs pill when it would have nothing to list: streaming boxes have no HDMI-in, AV or tuner. */
+    /**
+     * Hides the source pill when the set has nothing to switch to: streaming boxes have no HDMI-in, AV or
+     * tuner. The pill no longer only lists TvInputManager inputs, so a TV whose sources live in its own
+     * app (MIUI TV) keeps the button too.
+     */
     private void updateInputsButton() {
-        boolean any = liveTvIntent() != null || !sourcePanelService.isEmpty();
-        TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
-        if (!any && tim != null) {
-            for (TvInputInfo info : tim.getTvInputList()) {
-                // Inputs hidden in Settings > Inputs are left out of the menu, so they don't count here either.
-                if (info.isPassthroughInput() && !info.isHidden(this)) {
-                    any = true;
-                    break;
-                }
-            }
-        }
+        boolean any = hasSourcePopup()
+                || !sourcePanelService.isEmpty() || !sourcePanelAction.isEmpty()
+                || hasPassthroughInputs()
+                || vendorSourceCount() > 0
+                || TvApps.sourceIntent(this, liveTvIntent()) != null;
         btnInputs.setVisibility(any ? View.VISIBLE : View.GONE);
     }
 
@@ -2336,7 +2459,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             for (TvInputInfo info : inputs) {
                 String parent = info.getParentId();
                 if (parent == null || !inputIds.contains(parent)) continue;
-                if (!info.isPassthroughInput() || info.isHidden(this)) continue;
+                if (!info.isPassthroughInput() || Compat.isHidden(this, info)) continue;
                 List<TvInputInfo> onPort = cecDevices.get(parent);
                 if (onPort == null) cecDevices.put(parent, onPort = new ArrayList<>());
                 onPort.add(info);
@@ -2373,14 +2496,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     }
                 }
                 // Inputs hidden in the TV's Settings > Inputs stay out of the menu too.
-                if (!info.isPassthroughInput() || info.isHidden(this)) continue;
+                if (!info.isPassthroughInput() || Compat.isHidden(this, info)) continue;
                 // A CEC device's row is added with its port, below.
                 if (info.getParentId() != null && inputIds.contains(info.getParentId())) continue;
                 CharSequence l = info.loadLabel(this);
                 String label = l == null ? info.getId() : l.toString();
                 boolean hdmi = info.getType() == TvInputInfo.TYPE_HDMI;
                 if (hdmi && !label.toUpperCase(Locale.ROOT).contains("HDMI")) label = "HDMI " + label;
-                CharSequence custom = info.loadCustomLabel(this);
+                CharSequence custom = Compat.customLabel(this, info);
                 boolean named = custom != null && custom.length() > 0 && !custom.toString().equals(label);
                 if (!hdmi && rows.getChildCount() > 0 && !sawNonHdmi) addSeparator(rows);
                 if (!hdmi) sawNonHdmi = true;
@@ -2390,7 +2513,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     // Settings > Inputs), then the port. Opening the device's input also makes it the CEC
                     // active source, which wakes it.
                     for (TvInputInfo device : devices) {
-                        CharSequence name = device.loadCustomLabel(this);
+                        CharSequence name = Compat.customLabel(this, device);
                         if (name == null || name.length() == 0) name = named ? custom : device.loadLabel(this);
                         String deviceLabel = name == null || name.length() == 0 ? label : name + " \u00B7 " + label;
                         final String deviceId = device.getId();
@@ -2407,7 +2530,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         () -> openInput(id));
             }
         }
-        // Nothing to list where there is no TvInputManager: the TV's own source panel switches inputs.
+        // Nothing to list where there is no TvInputManager: offer the set's own source screens, then its own
+        // source panel, which switches inputs by itself.
+        if (rows.getChildCount() == 0) addVendorSourceRows(rows, popup);
         if (rows.getChildCount() == 0 && !sourcePanelService.isEmpty()) {
             addInputRow(rows, popup, R.drawable.ic_input, getString(R.string.inputs), -1, this::openSourcePanel);
         }

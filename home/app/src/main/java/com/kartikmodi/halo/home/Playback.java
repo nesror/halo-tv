@@ -11,7 +11,6 @@ import android.net.Uri;
 import android.os.SystemClock;
 import android.view.KeyEvent;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -23,10 +22,9 @@ import java.util.Map;
 /**
  * What is playing on the TV, and pause/play for Home Assistant.
  *
- * Three ways down, in order of how much they know: the Ambient screen's own player when it is up, then
- * the media session of whichever app is playing (YouTube, Netflix, Plex...), then a bare media key press
- * for the TVs where sessions cannot be read. The first two report a title and artwork; the last only
- * presses the button, so it is the fallback.
+ * Two ways down, in order of how much they know: the media session of whichever app is playing
+ * (YouTube, Netflix, Plex...), then a bare media key press for the TVs where sessions cannot be read.
+ * The first reports a title and artwork; the last only presses the button, so it is the fallback.
  */
 final class Playback {
 
@@ -39,7 +37,6 @@ final class Playback {
     /** pause, play, play_pause, stop, next or prev. Returns false when there was nothing to tell. */
     static boolean control(Context context, String action) {
         Context app = context.getApplicationContext();
-        if (AmbientActivity.foreground() && AmbientActivity.playerKey(action)) return true;
         MediaController c = best(app);
         if (c != null) {
             MediaController.TransportControls t = c.getTransportControls();
@@ -137,22 +134,6 @@ final class Playback {
                 if (md != null && md.getLong(MediaMetadata.METADATA_KEY_DURATION) > 0) {
                     out.put("duration", md.getLong(MediaMetadata.METADATA_KEY_DURATION) / 1000.0);
                 }
-            }
-        }
-
-        if (title.isEmpty()) {
-            // The Ambient screen keeps its own queue; a song it is playing is the one thing on screen.
-            JSONObject amb = RemoteServer.ambientState();
-            JSONArray queue = amb.optJSONArray("queue");
-            int i = amb.optInt("index", -1);
-            JSONObject item = queue == null || i < 0 || i >= queue.length() ? null : queue.optJSONObject(i);
-            if (item != null) {
-                title = item.optString("title");
-                artist = item.optString("artist");
-                artwork = item.optString("thumb");
-                playing = amb.optBoolean("playing");
-                out.put("app", app.getPackageName());
-                out.put("app_label", "Ambient");
             }
         }
 

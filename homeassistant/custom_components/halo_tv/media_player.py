@@ -125,7 +125,6 @@ class HaloTvMediaPlayer(HaloTvEntity, MediaPlayerEntity):
             "message_showing": bool(message.get("showing")),
             "message_text": message.get("text") or None,
             "playing_app": self._media.get("app_label") or None,
-            "ambient_open": self._data.get("ambient"),
             # Two optional ADB grants from install.sh; false simply means less detail, not a fault.
             "overlay_allowed": self._data.get("overlay"),
         }

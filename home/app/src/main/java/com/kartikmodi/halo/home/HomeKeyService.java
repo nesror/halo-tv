@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityService;
 import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
@@ -28,12 +29,15 @@ public class HomeKeyService extends AccessibilityService {
     private boolean settingsPanel;
     /** app_keys, the same map InputKeyService reads, for setups that run only this service. */
     private Map<Integer, String> appKeys = Collections.emptyMap();
+    /** Firmware launcher that cannot be disabled (config.xml home_forward_package); empty on most sets. */
+    private String forwardPackage = "";
+    private long lastForward;
 
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
-        // Bound by the system for as long as it is enabled, so the phone remote stays reachable.
-        RemoteServer.ensureStarted(this);
+        // Bound by the system for as long as it is enabled, so Home Assistant stays reachable.
+        HaServer.ensureStarted(this);
         ViewingTime.init(this);
         settingsScancodes = getResources().getIntArray(R.array.settings_key_scancodes);
         // Keycodes and the panel choice can also come from a theme; a theme push restarts this service.
@@ -41,6 +45,7 @@ public class HomeKeyService extends AccessibilityService {
         settingsKeycodes = config.settingsKeycodes;
         settingsPanel = config.settingsKeyPanel;
         appKeys = RemoteKeys.parseAppKeys(config.appKeys);
+        forwardPackage = getString(R.string.home_forward_package);
     }
 
     private boolean isSettingsKey(KeyEvent event) {
@@ -55,8 +60,14 @@ public class HomeKeyService extends AccessibilityService {
         // The stock launcher handled the remote's Settings button; with it disabled the button does nothing.
         if (isSettingsKey(event)) {
             if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
-                Intent open = settingsPanel ? new Intent(this, QuickSettingsActivity.class)
-                        : new Intent(Settings.ACTION_SETTINGS);
+                Intent open;
+                if (settingsPanel) {
+                    open = new Intent(this, QuickSettingsActivity.class);
+                } else {
+                    // The set's own settings app where there is one: MIUI TV answers no Settings intent.
+                    open = TvApps.settingsIntent(this);
+                    if (open == null) open = new Intent(Settings.ACTION_SETTINGS);
+                }
                 startActivity(open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             }
             return true;
@@ -66,13 +77,14 @@ public class HomeKeyService extends AccessibilityService {
             if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) RemoteKeys.launch(this, app);
             return true;
         }
+        // A real Home button: on firmware that cannot hand Home over, this is the only interception.
+        if (event.getKeyCode() == KeyEvent.KEYCODE_HOME) {
+            if (event.getAction() == KeyEvent.ACTION_UP) openHome();
+            return true;
+        }
         if (event.getKeyCode() != KeyEvent.KEYCODE_ALL_APPS) return false;
         if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
-            Intent home = new Intent(Intent.ACTION_MAIN)
-                    .addCategory(Intent.CATEGORY_HOME)
-                    .setPackage(getPackageName())
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-            startActivity(home);
+            openHome();
         }
         return true;
     }
@@ -105,11 +117,17 @@ public class HomeKeyService extends AccessibilityService {
         if (pkg == null || cls == null) return;
         // Which app owns the window: the viewing clock excludes our own screens and other launchers.
         if (pkg.length() > 0) ViewingTime.window(pkg.toString());
-        // Alexa's listening screen: the remote's mic button is held. The sun or moon on the Ambient
-        // screen listens along.
-        if ("com.amazon.vizzini".contentEquals(pkg)) AmbientActivity.alexaListening(true);
-        if ("com.amazon.vizzini".contentEquals(pkg) || "com.amazon.aria".contentEquals(pkg)) alexaAt = System.currentTimeMillis();
         boolean amazonHome = FIRE_OS_LAUNCHER.contentEquals(pkg) && cls.toString().contains("HomeActivity");
+        // Firmware whose launcher cannot be disabled over adb (config.xml home_forward_package): its window
+        // arriving means the Home button was pressed, so treat it exactly like the Amazon home below.
+        // Rate limited, so a slow start cannot bounce between the two home screens.
+        if (!amazonHome && !forwardPackage.isEmpty() && forwardPackage.contentEquals(pkg)) {
+            long now = SystemClock.uptimeMillis();
+            if (now - lastForward >= 1500) {
+                lastForward = now;
+                amazonHome = true;
+            }
+        }
         if (!amazonHome) {
             // Anything else in front, Settings included, cancels a pending redirect. Bare FrameLayout
             // events are transient window frames, not a screen the person landed on.
@@ -134,28 +152,8 @@ public class HomeKeyService extends AccessibilityService {
         }
     }
 
-    private long alexaAt;
-
     private void openHome() {
         hopPending = false;
-        // Alexa covers the Ambient screen with its own card, then sends the TV to Amazon's home when it
-        // is done. If that is what happened, go back to the Ambient screen as it was, music and all.
-        long paused = AmbientActivity.pausedAt;
-        long now = System.currentTimeMillis();
-        boolean alexaJustNow = now - alexaAt < 60000 || now - JarvisLink.lastAlexaCommandAt < 60000;
-        // Jarvis just opened TONIGHT. with a pick: Alexa's trip to Amazon's home shouldn't bury it.
-        if (now - JarvisLink.lastTonightAt < 60000) {
-            Intent t = getPackageManager().getLeanbackLaunchIntentForPackage(MainActivity.TONIGHT_PKG);
-            if (t != null) {
-                startActivity(t.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("keep", true));
-                return;
-            }
-        }
-        if (AmbientActivity.alive() && paused > 0 && alexaJustNow && now - paused < 120000) {
-            startActivity(new Intent(this, AmbientActivity.class)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
-            return;
-        }
         startActivity(new Intent(this, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
     }

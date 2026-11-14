@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The Ambient screen loads its page from RemoteServer on this device over plain HTTP, and a Home
+<!-- Artwork and news headlines are fetched from whatever addresses their sources use, and a Home
      Assistant message can carry a picture from a Home Assistant on the same Wi-Fi - an address like
-     http://homeassistant.local:8123 or http://192.168.1.10:8123 that no domain rule can name in advance.
+     http://homeassistant.local:8123 that no domain rule can name in advance.
      So plain HTTP is allowed throughout; everything else on this TV speaks https anyway. -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="true" />
