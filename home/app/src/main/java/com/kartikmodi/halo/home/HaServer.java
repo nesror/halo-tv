@@ -123,6 +123,17 @@ final class HaServer {
         }
     }
 
+    /** A file from the APK's assets: the remote's page is served from there, not rebuilt in Java. */
+    private byte[] asset(String name) throws IOException {
+        try (InputStream in = app.getAssets().open(name)) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream(32 * 1024);
+            byte[] buffer = new byte[8192];
+            int n;
+            while ((n = in.read(buffer)) > 0) out.write(buffer, 0, n);
+            return out.toByteArray();
+        }
+    }
+
     private static String decode(String s) {
         try {
             return URLDecoder.decode(s, "UTF-8");
@@ -173,14 +184,32 @@ final class HaServer {
             return;
         }
         switch (path) {
+            // ---- A phone on the same Wi-Fi opens http://<tv>:8765 and gets the remote.
             case "/":
+            case "/remote":
+            case "/index.html":
+                send(out, 200, "text/html; charset=utf-8", asset("remote.html"));
+                return;
+            case "/api":
+            case "/api/":
                 send(out, 200, "text/plain; charset=utf-8",
                         ("Halo TV\n\n"
+                                + "GET  /               the phone remote (HTML)\n"
+                                + "GET  /api/apps       the apps the remote can open\n"
+                                + "POST /api/launch     {\"package\": \"com.example.app\"}\n"
                                 + "GET  /api/ha/info     what this TV is\n"
                                 + "GET  /api/ha/state    what it is doing\n"
                                 + "POST /api/ha/notify   {\"message\": \"...\", \"text\": \"...\", \"image\": \"url\"}\n"
                                 + "POST /api/ha/command  {\"action\": \"pause|screen_off|volume_set|home|...\"}\n"
                                 + "GET  /api/tvtime      today's viewing time\n").getBytes(StandardCharsets.UTF_8));
+                return;
+            // ---- The remote's own two endpoints.
+            case "/api/apps":
+                sendJson(out, HaBridge.apps(app));
+                return;
+            case "/api/launch":
+                if (!"POST".equals(method)) break;
+                sendJson(out, HaBridge.launch(app, new JSONObject(body.isEmpty() ? "{}" : body)));
                 return;
             // ---- Home Assistant: what the TV is doing, a message for the screen, and a command.
             case "/api/ha/info":

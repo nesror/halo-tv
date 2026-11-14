@@ -13,8 +13,8 @@ android {
         // to API 21 by core library desugaring, see compileOptions below.
         minSdk 23
         targetSdk 34
-        versionCode 8
-        versionName '2.8'
+        versionCode 9
+        versionName '2.9'
     }
 
     buildTypes {

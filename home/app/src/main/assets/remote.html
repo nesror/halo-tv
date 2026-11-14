@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111114">
+<title>Halo TV 遥控</title>
+<style>
+  :root{
+    --bg:#111114; --card:#1b1b20; --card2:#232329; --line:#2e2e36;
+    --ink:#f2f2f5; --dim:#9a9aa5; --accent:#e8c87a; --on:#8ad6a0; --off:#6c6c78;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",Roboto,sans-serif;
+    padding:16px 14px calc(28px + env(safe-area-inset-bottom));max-width:620px;margin:0 auto}
+  header{display:flex;align-items:baseline;justify-content:space-between;margin:0 2px 14px}
+  h1{font-size:18px;font-weight:600;letter-spacing:.04em;margin:0}
+  h1 span{color:var(--accent)}
+  #conn{font-size:12px;color:var(--dim)}
+  #conn.bad{color:#e08a8a}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+  .row{display:flex;align-items:center;gap:10px}
+  .between{justify-content:space-between}
+  .label{font-size:12px;color:var(--dim);letter-spacing:.06em}
+  .value{font-size:15px}
+  .big{font-size:20px;font-weight:600}
+  .grow{flex:1;min-width:0}
+  .ellipsis{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  button{font:inherit;color:var(--ink);background:var(--card2);border:1px solid var(--line);
+    border-radius:12px;padding:12px 0;flex:1;cursor:pointer;transition:transform .08s,background .15s}
+  button:active{transform:scale(.97);background:#2c2c34}
+  button.accent{border-color:#5a4a22;color:var(--accent)}
+  button.on{border-color:#2f5a3c;color:var(--on)}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .grid button{padding:14px 6px;font-size:14px}
+  input,textarea{font:inherit;width:100%;background:#141418;color:var(--ink);border:1px solid var(--line);
+    border-radius:10px;padding:10px 12px}
+  textarea{resize:vertical;min-height:64px}
+  input:focus,textarea:focus{outline:none;border-color:#4a4a55}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .chip{flex:0 0 auto;padding:7px 12px;font-size:13px;border-radius:999px}
+  .chip.sel{background:#2f2a1c;border-color:#5a4a22;color:var(--accent)}
+  .apps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+  .app{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    padding:12px 6px;border:1px solid var(--line);border-radius:12px;background:var(--card2);
+    font-size:12px;text-align:center;cursor:pointer;min-height:64px}
+  .app:active{background:#2c2c34}
+  .app b{font-weight:600;font-size:13px}
+  .app i{font-style:normal;color:var(--dim);font-size:11px;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;max-width:100%}
+  .muted{color:var(--dim)}
+  #toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);background:#2c2c34;
+    border:1px solid var(--line);color:var(--ink);padding:9px 16px;border-radius:999px;font-size:13px;
+    opacity:0;pointer-events:none;transition:.22s}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  .bar{height:4px;border-radius:2px;background:#2c2c34;overflow:hidden;margin-top:10px}
+  .bar>div{height:100%;background:var(--accent);width:0;transition:width .3s}
+</style>
+</head>
+<body>
+<header>
+  <h1>Halo <span>TV</span></h1>
+  <div id="conn">连接中…</div>
+</header>
+
+<div class="card">
+  <div class="row between">
+    <div>
+      <div class="label">正在播放</div>
+      <div class="value ellipsis" id="media">—</div>
+    </div>
+    <div style="text-align:right">
+      <div class="label">屏幕</div>
+      <div class="value" id="screen">—</div>
+    </div>
+  </div>
+  <div class="grid" style="margin-top:12px">
+    <button data-action="prev">上一曲</button>
+    <button data-action="play_pause" class="accent">播放 / 暂停</button>
+    <button data-action="next">下一曲</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="row between">
+    <div class="label">音量</div>
+    <div class="value" id="vol">—</div>
+  </div>
+  <div class="bar"><div id="volbar"></div></div>
+  <div class="grid" style="margin-top:12px">
+    <button data-action="volume_down">小声</button>
+    <button data-action="mute">静音</button>
+    <button data-action="volume_up">大声</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="grid">
+    <button data-action="screen_toggle">开关屏</button>
+    <button data-action="home" class="accent">回桌面</button>
+    <button data-action="stop">停止播放</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="label" style="margin-bottom:8px">在电视上弹出消息</div>
+  <input id="msgTitle" placeholder="标题（可留空）" value="">
+  <div style="height:8px"></div>
+  <textarea id="msgBody" placeholder="说点什么…"></textarea>
+  <div class="chips">
+    <button class="chip sel" id="ttsChip">朗读</button>
+    <button class="chip" data-sec="10">10 秒</button>
+    <button class="chip sel" data-sec="30">30 秒</button>
+    <button class="chip" data-sec="60">60 秒</button>
+    <button class="chip" id="send">发送</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="row between" style="margin-bottom:4px">
+    <div class="label">应用</div>
+    <div class="label" id="appCount"></div>
+  </div>
+  <div class="apps" id="apps"></div>
+</div>
+
+<div class="card">
+  <div class="row between">
+    <div class="label">今日观看</div>
+    <div class="value" id="watch">—</div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  var base = '';
+  var timer = null;
+  var state = null;
+  var seconds = 30;
+  var tts = true;
+
+  function $(id) { return document.getElementById(id); }
+
+  function toast(text) {
+    var t = $('toast');
+    t.textContent = text;
+    t.classList.add('show');
+    clearTimeout(toast.h);
+    toast.h = setTimeout(function () { t.classList.remove('show'); }, 1800);
+  }
+
+  function fmt(min) {
+    var whole = Math.round(min);
+    var h = Math.floor(whole / 60), m = whole % 60;
+    return h ? (h + ' 小时' + (m ? ' ' + m + ' 分' : '')) : (m + ' 分钟');
+  }
+
+  function connected(ok) {
+    var c = $('conn');
+    c.textContent = ok ? '已连接' : '连接断开，重试中…';
+    c.classList.toggle('bad', !ok);
+  }
+
+  function api(path, body) {
+    var opt = body ? {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    } : {};
+    return fetch(base + path, opt).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    });
+  }
+
+  function paint(s) {
+    state = s;
+    connected(true);
+    var media = s.media || {};
+    $('media').textContent = media.title ? media.title : (media.playing ? '播放中' : '未在播放');
+    $('screen').textContent = s.screen === 'off' ? '已关闭' : '已点亮';
+    var v = typeof s.volume === 'number' ? s.volume : 0;
+    $('vol').textContent = s.muted ? '静音' : v + '%';
+    $('volbar').style.width = (s.muted ? 0 : v) + '%';
+    var watch = s.viewing || {};
+    if (typeof watch.watched_min === 'number') {
+      var text = fmt(watch.watched_min);
+      if (typeof watch.daily_limit_min === 'number') text += ' / ' + fmt(watch.daily_limit_min);
+      $('watch').textContent = watch.limit_reached ? text + '（已达上限）' : text;
+    }
+  }
+
+  function refresh() {
+    clearTimeout(timer);
+    api('/api/ha/state').then(function (s) {
+      paint(s);
+    }).catch(function () {
+      connected(false);
+    }).then(function () {
+      timer = setTimeout(refresh, 4000);
+    });
+  }
+
+  function run(action, extra) {
+    var body = { action: action };
+    if (extra) for (var k in extra) body[k] = extra[k];
+    api('/api/ha/command', body).then(function (r) {
+      if (r.state) paint(r.state);
+      if (!r.ok) toast('这条命令电视没有接受');
+    }).catch(function () { toast('没连上电视'); connected(false); });
+  }
+
+  document.querySelectorAll('[data-action]').forEach(function (b) {
+    b.addEventListener('click', function () { run(b.dataset.action); });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.chip[data-sec]'), function (b) {
+    b.addEventListener('click', function () {
+      seconds = parseInt(b.dataset.sec, 10);
+      Array.prototype.forEach.call(document.querySelectorAll('.chip[data-sec]'), function (o) {
+        o.classList.toggle('sel', o === b);
+      });
+    });
+  });
+
+  $('ttsChip').addEventListener('click', function () {
+    tts = !tts;
+    this.classList.toggle('sel', tts);
+  });
+
+  $('send').addEventListener('click', function () {
+    var message = $('msgBody').value.trim();
+    if (!message) { toast('先写点内容'); return; }
+    var body = { message: message, duration: seconds, tts: tts };
+    var title = $('msgTitle').value.trim();
+    if (title) body.title = title;
+    api('/api/ha/notify', body).then(function () {
+      toast('已发到电视');
+      $('msgBody').value = '';
+    }).catch(function () { toast('没连上电视'); connected(false); });
+  });
+
+  function loadApps() {
+    api('/api/apps').then(function (r) {
+      var list = r.apps || [];
+      var box = $('apps');
+      box.innerHTML = '';
+      $('appCount').textContent = list.length + ' 个';
+      list.forEach(function (a) {
+        var d = document.createElement('div');
+        d.className = 'app';
+        var name = a.label || a.package;
+        var first = Array.from(name).slice(0, 4).join('');
+        d.innerHTML = '<b></b><i></i>';
+        d.querySelector('b').textContent = first;
+        d.querySelector('i').textContent = first === name ? '' : name;
+        d.addEventListener('click', function () {
+          api('/api/launch', { package: a.package }).then(function (res) {
+            toast(res.ok ? '正在打开 ' + name : '打不开 ' + name);
+          }).catch(function () { toast('没连上电视'); connected(false); });
+        });
+        box.appendChild(d);
+      });
+    }).catch(function () { connected(false); });
+  }
+
+  refresh();
+  loadApps();
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) { refresh(); loadApps(); }
+  });
+})();
+</script>
+</body>
+</html>

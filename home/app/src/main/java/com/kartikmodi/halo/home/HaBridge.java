@@ -2,6 +2,8 @@ package com.kartikmodi.halo.home;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.media.AudioManager;
 import android.os.Build;
 import android.provider.Settings;
@@ -11,7 +13,12 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Everything Home Assistant asks of the TV, in one place: what the TV is doing, a message to put on it,
@@ -155,6 +162,55 @@ final class HaBridge {
                 break;
         }
         return new JSONObject().put("ok", ok).put("action", action).put("state", state(app));
+    }
+
+    // ---- The phone remote: what can be opened, and opening it.
+
+    /** Every app the remote may open, as the launcher sees them: no duplicates, no hidden apps, no Home. */
+    static JSONObject apps(Context app) throws JSONException {
+        Config cfg = Config.load(app);
+        PackageManager pm = app.getPackageManager();
+        List<ResolveInfo> found = new ArrayList<>(pm.queryIntentActivities(
+                new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER), 0));
+        // MIUI TV and other firmware ship phone-style APKs with no leanback entry at all.
+        found.addAll(pm.queryIntentActivities(
+                new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0));
+
+        Map<String, String> byPackage = new LinkedHashMap<>();
+        for (ResolveInfo ri : found) {
+            if (ri.activityInfo == null) continue;
+            String pkg = ri.activityInfo.packageName;
+            if (pkg.equals(app.getPackageName()) || cfg.hiddenApps.contains(pkg) || byPackage.containsKey(pkg)) continue;
+            if (TvApps.launchIntent(app, pkg) == null) continue;   // listed but nothing opens it
+            String name = cfg.appLabels.get(pkg);
+            if (name == null) name = String.valueOf(ri.loadLabel(pm)).trim();
+            byPackage.put(pkg, name.isEmpty() ? pkg : name);
+        }
+
+        List<Map.Entry<String, String>> entries = new ArrayList<>(byPackage.entrySet());
+        Collections.sort(entries, (a, b) -> a.getValue().compareToIgnoreCase(b.getValue()));
+        JSONArray list = new JSONArray();
+        for (Map.Entry<String, String> e : entries) {
+            list.put(new JSONObject().put("package", e.getKey()).put("label", e.getValue()));
+        }
+        return new JSONObject().put("apps", list);
+    }
+
+    /** Opens one app on the TV; the phone remote's tiles are all this. */
+    static JSONObject launch(Context app, JSONObject request) throws JSONException {
+        String pkg = request.optString("package", "").trim();
+        Intent i = TvApps.launchIntent(app, pkg);
+        boolean ok = false;
+        if (i != null) {
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                app.startActivity(i);
+                ok = true;
+            } catch (RuntimeException e) {
+                Log.w(TAG, "could not open " + pkg, e);
+            }
+        }
+        return new JSONObject().put("ok", ok).put("package", pkg).put("state", state(app));
     }
 
     private static void setVolume(AudioManager audio, JSONObject request) {

@@ -37,6 +37,7 @@ It installs over Wi-Fi from your computer in one command, and it's built to be i
   - [4. Run the installer](#4-run-the-installer)
   - [5. First run](#5-first-run)
 - [Using Halo TV](#using-halo-tv)
+- [The phone remote](#the-phone-remote)
 - [Home Assistant](#home-assistant)
 - [Viewing time](#viewing-time)
 - [Customise](#customise)
@@ -182,7 +183,26 @@ Re-running it is safe: it reinstalls over the existing apps and keeps your setti
 | **Home** | Arrow keys move between apps; the first row is the dock. **TONIGHT.** in the top bar opens Tonight. Next to it sit **Inputs**, **Wi-Fi** and **Settings**: Settings opens this TV's own settings app, Inputs the set's source popup (see `source_popup_broadcast` and `source_rows`). Hold **OK** on Settings for Halo's own launcher settings. |
 | **Tiles** | Glass tiles show a bundled logo where `glass_logos` names one, a Michroma wordmark for `wordmark:TEXT`, and otherwise the first **four characters** of the app's name, one size for every tile. |
 | **Tonight** | Spin the genre wheel, open **For You** for AI picks, use search (top right), or pick **MARVEL** / **DC** for the Hall of Heroes. **Play on…** opens the title in the right app. |
+| **Phone remote** | Open **`http://<tv-ip>:8765`** on any phone or laptop on the same Wi-Fi: play/pause, volume, screen on/off, back to Home, a message with a voice, the viewing clock, and a tile for every app that opens on the TV with one tap. No app, no pairing, no account. |
 | **Home Assistant** | Optional: a message on screen with a picture and a voice, and a real TV entity. See [Home Assistant](#home-assistant). |
+
+---
+
+## The phone remote
+
+Point a phone's browser at the TV — `http://192.168.1.50:8765` — and the launcher serves the remote
+itself, from the same small server Home Assistant talks to. Nothing to install on the phone.
+
+| | |
+|---|---|
+| **Now playing** | Play / pause, previous, next. They act on whatever is playing, through its media session. |
+| **Volume, screen** | Quieter / mute / louder, screen on-off, stop, and **Home** to come back to the launcher. |
+| **Message** | Title and body, 10/30/60 seconds on screen, with the recorded voice if the set has no TTS engine. |
+| **Apps** | Every app that can open on the TV (`/api/apps`), one tap to launch it. The stock launcher and `hidden_apps` stay hidden, as on Home. |
+| **Today's viewing** | The clock the parents' rules count, and the limit it is heading for. |
+
+The page is `app/src/main/assets/remote.html`; the endpoints behind it are `/api/apps`,
+`/api/launch`, plus the Home Assistant ones below. `http://<tv-ip>:8765/api` prints them all.
 
 ---
 
@@ -415,7 +435,8 @@ Re-enables the stock launcher, removes Halo TV's Home-button service, and uninst
 home/                  Home (Android app com.kartikmodi.halo.home)
   app/src/main/res/values/config.xml   dock, hidden apps, colours, look, TV quirks
   app/src/main/res/raw/vo_*.wav        the reminder phrases Voice stitches together
-  java/.../HaServer.java      Home Assistant bridge on port 8765 (/api/ha/*, /api/tvtime/*)
+  app/src/main/assets/remote.html      the phone remote's page, served at http://<tv>:8765
+  java/.../HaServer.java      HTTP bridge on port 8765: the remote, /api/launch, /api/ha/*, /api/tvtime/*
   java/.../HaBridge.java      what that bridge answers: state, messages, commands
   java/.../TvApps.java        finds the set's own Settings and source apps
   java/.../Compat.java        the newer APIs Home uses, wrapped for API 23
