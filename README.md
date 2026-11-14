@@ -428,7 +428,7 @@ Re-enables the stock launcher, removes Halo TV's Home-button service, and uninst
 | The TV never showed "Allow USB debugging?" | It may be behind the current app: press **Home**. Or revoke old authorisations in Developer options and run the installer again. |
 | Home button still opens the old home (MIUI TV) | The stock launcher cannot be disabled on this firmware. Check **Settings → Accessibility → Halo TV Home button** is on, and that `home_forward_package` matches its package (`pm list packages | grep tvhome`). |
 | Home button stopped working after reinstalling | An `adb install -r` clears it from the enabled services. Re-run: `settings put secure enabled_accessibility_services <list>:com.kartikmodi.halo.home/.HomeKeyService; settings put secure accessibility_enabled 1`. |
-| Home Assistant says it cannot connect | `curl http://<tv-ip>:8765/api/ha/info` on a computer on the same Wi-Fi. The bridge opens by itself at boot (BootReceiver) and restarts if the port drops, but it lives in the launcher's process: after a reboot on a slow set give it a minute, and port 8765 must not be blocked. |
+| Home Assistant says it cannot connect | `curl http://<tv-ip>:8765/api/ha/info` on a computer on the same Wi-Fi. The bridge opens by itself: at boot (BootReceiver) and on a one-minute heartbeat (Watchdog) that reopens it if standby or the system's memory cleaner killed the launcher. Give it a minute after a power-on, and make sure port 8765 is not blocked. |
 | Home button still opens the old home (Fire TV, `--keep-stock`) | the Home-button service is off. Turn on **Halo TV Home button** in **Settings → Accessibility** and run the installer again. Google TV: run `./install.sh`; it reports where Home resolves. |
 | `Home currently resolves to …setupwraith` (Google TV) | Google's setup wizard is claiming Home. Use `./install.sh --keep-stock`. |
 | No Waves behind the glass | Run `./install.sh --home-only` again, or set `glass_backdrop` to `still` on low-end TVs. |
@@ -465,6 +465,7 @@ home/                  Home (Android app com.kartikmodi.halo.home)
   java/.../Voice.java         the recorded reminder lines, for TVs with no TTS engine
   java/.../Keys.java          the remote's buttons: /system/bin/input, with accessibility as the fallback
   java/.../MiTv.java          power through the set's own remote service (mitv.service, 6095)
+  java/.../Watchdog.java      the one-minute heartbeat that reopens 8765 after standby or a kill
   java/.../HomeKeyService.java  Home button, for firmware that keeps its own launcher
 tonight/               Tonight (Android app com.kartikmodi.halo.tonight)
   secrets.properties.example     the keys Tonight reads at build time

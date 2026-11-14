@@ -295,9 +295,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        // The Home Assistant bridge answers on this TV's Wi-Fi address from the moment Home is up.
-        HaServer.ensureStarted(this);
-        ViewingTime.init(this);
+        // The Home Assistant bridge answers on this TV's Wi-Fi address from the moment Home is up,
+        // and the heartbeat keeps it answering once Home is gone (see Watchdog).
+        Watchdog.start(this);
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config).
         Config cfg = Config.load(this);

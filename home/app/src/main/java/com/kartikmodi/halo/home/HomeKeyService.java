@@ -48,8 +48,7 @@ public class HomeKeyService extends AccessibilityService {
         super.onServiceConnected();
         instance = this;
         // Bound by the system for as long as it is enabled, so Home Assistant stays reachable.
-        HaServer.ensureStarted(this);
-        ViewingTime.init(this);
+        Watchdog.start(this);
         settingsScancodes = getResources().getIntArray(R.array.settings_key_scancodes);
         // Keycodes and the panel choice can also come from a theme; a theme push restarts this service.
         Config config = Config.load(this);
