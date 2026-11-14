@@ -13,20 +13,30 @@ Nothing new is opened on the network. It all goes through the launcher's own sma
 
 ## What you get
 
+One device, and 57 entities on it:
+
 | | |
 |---|---|
-| `notify.mobile_app_halo_tv` | A message on the TV: `message`, `title`, and a `data:` dictionary with a picture, a voice and a duration. Named like the companion app's, so an automation you already have for a phone works with one word changed. |
-| `media_player.halo_tv` | The TV. **Off** means the screen is dark, so `turn_off` is "screen off" and `turn_on` brings it back. Also play, pause, stop, volume, and what is playing (title, artist, artwork, app). |
-| `halo_tv.command` | One action at a time — `pause`, `screen_off`, `say` — for scripts that want to be explicit. |
+| `media_player.halo_tv` | The TV, with `device_class: tv`. **Off** means the screen is dark, so `turn_off` is "screen off" and `turn_on` brings it back. Also play, pause, stop, previous/next, volume, mute, and what is playing (title, artist, artwork, app). Its sources are the apps, so `select_source` opens one. |
+| `remote.halo_tv_remote` | The set's own remote: `send_command` presses one key at a time. The apps are its activities. |
+| `button.*` (19) | The pad, volume, screen off/on, **standby**, close a message, stop speaking, reset today's viewing time - one press each, for a dashboard. |
+| `switch.*` (7) | Screen, mute, and each viewing-time rule: limits on, go dark at the limit, speak the reminders, pause on a break, keep it paused. |
+| `number.*` (7) | The viewing-time thresholds - daily limit, eye-rest interval, break length, warning lead, reminder seconds, shutdown delay - and volume. |
+| `sensor.*` (14) | Watched today, remaining today, watched in words, next break in, break left, breaks today, why it is counting, screen, volume, app in front, now playing, message on screen, last answer, version. |
+| `binary_sensor.*` (6) | Screen on, playing, message showing, counting viewing time, daily limit reached, on a break. |
+| `text.halo_tv_message` | Type a message in a dashboard and it appears on the TV. `text.halo_tv_message_title` is the heading. |
+| `notify.mobile_app_halo_tv` | The same message with a picture and a voice, shaped like the companion app's, so an automation you already have for a phone works with one word changed. |
+| `halo_tv.command` / `halo_tv.key` / `halo_tv.send_message` / `halo_tv.set_viewing` | The raw calls, for scripts that would rather name one thing. |
 
-The `media_player` also carries, as attributes, whether a message is showing, how the screen is off
-(`dim` or `sleep`), and which app is playing.
+The viewing-time switches and numbers write to the TV's own clock (the one in
+[viewing-time.zh-CN.md](viewing-time.zh-CN.md)), not to a copy: changing one here changes what the set
+does by itself, with no automation needed.
 
 ---
 
 ## Before you start
 
-1. **Halo TV 2.4 or newer**, with this feature, installed on the TV: `./install.sh --home-only`.
+1. **Halo TV 3.2 or newer**, installed on the TV: the launcher's own web server is what the integration talks to. Any 3.x release answers; 2.x has fewer endpoints and no remote keys.
 2. **The two ADB grants** `install.sh` now makes. Both are optional — without them everything still
    answers, just with less reach:
 
@@ -163,12 +173,17 @@ data:
 
 | Home Assistant | On the TV |
 |---|---|
-| `turn_off` | Screen off — a real sleep where the TV allows it, otherwise a black screen at zero brightness, after which the TV's own sleep timer finishes the job. **Any key on the remote brings the picture back.** |
+| `turn_off` | Screen off - a real sleep where the TV allows it, otherwise a black screen at zero brightness, after which the TV's own sleep timer finishes the job. **Any key on the remote brings the picture back.** |
 | `turn_on` | Screen on, woken from either kind of off. |
 | `play` / `pause` / `stop` | Whatever is playing: the media session of YouTube, Netflix, Plex... |
+| `next_track` / `previous_track` | The next or previous episode of whatever is playing. |
 | `volume_set` / `volume_mute` | The TV's music volume. |
+| `select_source` | Opens an app; the source list is every app the launcher offers. |
 | state `off` | The screen is dark. |
 | state `playing` / `paused` / `idle` | Something is playing / paused / the TV is on but quiet. |
+
+Screen off is not standby. Standby is `button.halo_tv_standby`, it goes through the set's own remote
+channel, it is one-way, and the TV drops off the network once it is there.
 
 ```yaml
 # Screen off at midnight, back on at seven
@@ -204,6 +219,62 @@ automation:
         target:
           entity_id: media_player.halo_tv
 ```
+
+```yaml
+# Move through a menu with the remote entity
+- action: remote.send_command
+  target:
+    entity_id: remote.halo_tv_remote
+  data:
+    command:
+      - down
+      - down
+      - ok
+```
+
+```yaml
+# Open an app
+action: media_player.select_source
+target:
+  entity_id: media_player.halo_tv
+data:
+  source: YouTube
+```
+
+### Viewing time, as entities
+
+The limits already run inside the TV; the integration only exposes them. Changing a switch or a number
+changes the set itself:
+
+```yaml
+# After nine, thirty minutes a day, and go dark at the limit
+automation:
+  - alias: Tighter viewing time at night
+    triggers:
+      - trigger: time
+        at: "21:00:00"
+    actions:
+      - action: number.set_value
+        target:
+          entity_id: number.halo_tv_daily_limit
+        data:
+          value: 30
+      - action: switch.turn_on
+        target:
+          entity_id: switch.halo_tv_go_dark_at_the_limit
+```
+
+```yaml
+# Homework is done: more time today
+action: halo_tv.set_viewing
+data:
+  daily_limit_min: 120
+```
+
+How much is left is `sensor.halo_tv_remaining_today` (minutes) and `sensor.halo_tv_watched_text`
+("1小时20分"); `sensor.halo_tv_next_break_in` is the next eye-rest reminder, and
+`binary_sensor.halo_tv_daily_limit_reached` turns on at the limit.
+
 
 ---
 

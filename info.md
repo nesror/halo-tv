@@ -8,14 +8,22 @@ Halo TV 是一台装在电视里的 Android TV 桌面（Home），这个集成�
 
 ## 装好之后
 
+一台设备，57 个实体：
+
 | 实体 / 服务 | 作用 |
 |---|---|
-| `notify.halo_tv` | 在电视上弹消息：`message`、`title`、`data: {image: ..., tts: true, duration: 25}` |
-| `media_player.halo_tv` | 当成一台电视用：开关屏、播放/暂停、音量、当前在播什么 |
-| `halo_tv.command` | 一次一个动作：`pause`、`screen_off`、`home`、`say`、`viewing_reset` 等 |
+| `media_player.halo_tv` | 当成一台电视用（device_class 是 tv）：开关屏、播放/暂停、上一个/下一个、音量、静音、当前在播什么；所有应用都是它的音源 |
+| `remote.halo_tv_remote` | 遥控器：`send_command` 一次按一个键 |
+| `button.*`（19 个） | 方向、确定、返回、主页、菜单、信息、最近、播放暂停、音量±、熄屏、亮屏、待机、关消息、停止朗读、重置今日观看 |
+| `switch.*`（7 个） | 屏幕、静音，以及每条观看时间规则 |
+| `number.*`（7 个） | 每日上限、休息间隔、休息时长、提前提醒、消息停留秒数、熄屏延迟、音量 |
+| `sensor.*`（14 个）/ `binary_sensor.*`（6 个） | 今日已看、剩余、下次休息、休息次数、已达上限、屏幕亮着、正在播放、有消息 |
+| `text.halo_tv_message` | 在面板上打一句，电视就显示 |
+| `notify.mobile_app_halo_tv` | 带图片和语音的消息（和手机 App 的写法一样） |
+| `halo_tv.command` / `key` / `send_message` / `set_viewing` | 一次一个动作，给脚本用 |
 
 ```yaml
-action: notify.halo_tv
+action: notify.mobile_app_halo_tv
 data:
   title: 门口有人
   message: 有人在按门铃

@@ -235,7 +235,7 @@ The component is in `homeassistant/custom_components/halo_tv`; the full guide is
 2. Search **Halo TV**, download it, restart Home Assistant.
 3. **Settings → Devices & services → Add integration → Halo TV**.
 
-`hacs.json` points HACS at `halo_tv.zip` on the latest release, which `tools/hacs-release.sh 2.7.0`
+`hacs.json` points HACS at `halo_tv.zip` on the latest release, which `tools/hacs-release.sh 3.0.0`
 builds and uploads (the workflow in `.github/workflows/hacs-release.yml` does the same on a tag).
 
 **By hand**, without HACS:
@@ -254,11 +254,19 @@ curl http://<tv-ip>:8765/api/ha/info
 
 You get:
 
+57 entities on one device:
+
 | | |
 |---|---|
-| `notify.mobile_app_halo_tv` | A message on the TV, with the same `message` / `title` / `data:` shape as the companion app on a phone. |
-| `media_player.halo_tv` | The TV: on/off (screen on/off), play, pause, volume, and what is playing. |
-| `halo_tv.command` | One action at a time, for scripts. |
+| `media_player.halo_tv` | The TV (`device_class: tv`): screen on/off, play/pause/stop, previous/next, volume, mute, what is playing, and every app as a source. |
+| `remote.halo_tv_remote` | The set's own remote: `send_command` presses one key at a time. |
+| `button.*` (19) | The pad, volume, screen off/on, standby, close a message, stop speaking, reset today's viewing time. |
+| `switch.*` (7) | Screen, mute, and each viewing-time rule. |
+| `number.*` (7) | Daily limit, eye-rest interval, break length, warning lead, reminder seconds, shutdown delay, volume. |
+| `sensor.*` (14) / `binary_sensor.*` (6) | Watched today, remaining, next break, breaks, limit reached, screen on, playing, message showing. |
+| `text.halo_tv_message` | Type a message and it appears on the TV. |
+| `notify.mobile_app_halo_tv` | The same message with a picture and a voice, shaped like the companion app on a phone. |
+| `halo_tv.command` / `key` / `send_message` / `set_viewing` | The raw calls, for scripts. |
 
 ```yaml
 action: notify.mobile_app_halo_tv
@@ -460,7 +468,7 @@ home/                  Home (Android app com.kartikmodi.halo.home)
   java/.../HomeKeyService.java  Home button, for firmware that keeps its own launcher
 tonight/               Tonight (Android app com.kartikmodi.halo.tonight)
   secrets.properties.example     the keys Tonight reads at build time
-homeassistant/         Home Assistant custom integration (messages, media_player, commands)
+homeassistant/         Home Assistant custom integration (57 entities, messages, commands)
   custom_components/halo_tv/   the integration itself
   tests/               its tests, plus fake_tv.py: a stand-in TV for working on it without one
 tools/                 tv.py: a small ADB-over-Wi-Fi client (no adb install needed); b64push.py

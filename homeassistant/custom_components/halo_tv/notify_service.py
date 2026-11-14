@@ -27,7 +27,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.service import async_set_service_schema
 
-from .api import HaloTvError
 from .const import ACTIONS
 from .coordinator import HaloTvCoordinator
 
@@ -102,10 +101,8 @@ class HaloTvNotificationService(BaseNotificationService):
 
         # Otherwise the command rides along: the TV runs it as it puts the message up.
 
-        try:
-            result = await self._coordinator.async_notify(payload)
-        except HaloTvError as err:
-            raise HomeAssistantError(f"Halo TV did not show the message: {err}") from err
+        # The coordinator turns a failure into the HomeAssistantError a service call shows.
+        result = await self._coordinator.async_notify(payload)
         if result.get("overlay") is False:
             _LOGGER.warning(
                 "Halo TV took the message but cannot draw over other apps on this TV, so it may only "
@@ -114,10 +111,7 @@ class HaloTvNotificationService(BaseNotificationService):
             )
 
     async def _async_command(self, action: str) -> None:
-        try:
-            await self._coordinator.async_command(action)
-        except HaloTvError as err:
-            raise HomeAssistantError(f"Halo TV did not take '{action}': {err}") from err
+        await self._coordinator.async_command(action)
 
 
 def build_payload(

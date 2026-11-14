@@ -78,6 +78,18 @@
           "description": "For 'volume_set': 0-1, the way Home Assistant usually means volume."
         }
       }
+    },
+    "key": {
+      "name": "Press a key",
+      "description": "One press of the TV's own remote. power is real standby and cannot be undone from here."
+    },
+    "send_message": {
+      "name": "Send a message",
+      "description": "Put a message on the TV: a heading, a line of text, a picture, and a voice if you want one."
+    },
+    "set_viewing": {
+      "name": "Set viewing-time rules",
+      "description": "Change the TV's own viewing-time clock: daily limit, eye-rest interval, reminders."
     }
   }
 }

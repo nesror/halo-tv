@@ -78,6 +78,18 @@
           "description": "用于 volume_set：0-1，Home Assistant 通常使用的写法。"
         }
       }
+    },
+    "key": {
+      "name": "按一个键",
+      "description": "按一下电视自己的遥控键。power 是真待机，从这里叫不回来。"
+    },
+    "send_message": {
+      "name": "发一条消息",
+      "description": "在电视上显示一条消息：标题、正文、图片，需要的话还能念出来。"
+    },
+    "set_viewing": {
+      "name": "设置观看时间规则",
+      "description": "改电视机自己的观看时间表：每日上限、休息间隔、提醒文案。"
     }
   }
 }

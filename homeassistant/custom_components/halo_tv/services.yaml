@@ -1,9 +1,14 @@
-# Describes halo_tv.command to the Home Assistant UI (Developer tools -> Actions).
+# Describes the four halo_tv services to the Home Assistant UI (Developer tools -> Actions).
+# Most of them also exist as entities; these are for scripts that would rather name one thing.
+
 command:
   name: Send a command
   description: >-
     Tell a Halo TV to do one thing: pause, play, go dark, light up, read
     something out loud, or show a message.
+  target:
+    device:
+      integration: halo_tv
   fields:
     action:
       name: Command
@@ -105,3 +110,194 @@ command:
           min: 0
           max: 1
           step: 0.01
+
+key:
+  name: Press a key
+  description: >-
+    One press of the TV's own remote - the same thing the plastic one does, including
+    power, which puts the set into standby and drops it off the network.
+  target:
+    device:
+      integration: halo_tv
+  fields:
+    key:
+      name: Key
+      description: >-
+        up, down, left, right, ok, back, home, menu, info, recents, play_pause,
+        volume_up, volume_down or power.
+      required: true
+      example: ok
+      selector:
+        select:
+          options:
+            - up
+            - down
+            - left
+            - right
+            - ok
+            - back
+            - home
+            - menu
+            - info
+            - recents
+            - play_pause
+            - volume_up
+            - volume_down
+            - power
+
+send_message:
+  name: Send a message
+  description: >-
+    Put a message on the TV: a heading, a line of text, a picture, and optionally a voice
+    that reads it out. The same thing notify.mobile_app_<tv> does.
+  target:
+    device:
+      integration: halo_tv
+  fields:
+    message:
+      name: Message
+      description: The text to show.
+      required: true
+      example: 该吃饭了
+      selector:
+        text:
+          multiline: true
+    title:
+      name: Title
+      description: The small heading above the message.
+      example: 爸爸
+      selector:
+        text:
+    image:
+      name: Image
+      description: A picture to show, as an http(s) address or a data: URI.
+      example: http://homeassistant.local:8123/local/doorbell.jpg
+      selector:
+        text:
+    language:
+      name: Language
+      description: A language tag such as zh-CN or en-GB. Empty uses the TV's own language.
+      example: zh-CN
+      selector:
+        text:
+    position:
+      name: Position
+      description: Where on the screen the message sits.
+      default: center
+      selector:
+        select:
+          options:
+            - center
+            - top
+            - bottom
+    duration:
+      name: Duration
+      description: Seconds on screen. 0 leaves it up until it is dismissed.
+      default: 20
+      selector:
+        number:
+          min: 0
+          max: 3600
+          unit_of_measurement: seconds
+    tts:
+      name: Read aloud
+      description: Also speak the message on the TV.
+      default: false
+      selector:
+        boolean:
+
+set_viewing:
+  name: Set viewing-time rules
+  description: >-
+    Change the viewing-time clock in the TV itself: the daily limit, the eye-rest interval,
+    the reminder texts, and whether the set goes dark at the limit. The same settings are on
+    switch and number entities; this service changes several at once.
+  target:
+    device:
+      integration: halo_tv
+  fields:
+    enabled:
+      name: Limits on
+      description: Whether the clock counts and enforces anything at all.
+      selector:
+        boolean:
+    daily_limit_min:
+      name: Daily limit
+      description: Minutes a day before the set goes dark.
+      selector:
+        number:
+          min: 1
+          max: 1440
+          unit_of_measurement: minutes
+    break_interval_min:
+      name: Eye-rest reminder every
+      description: Minutes of viewing between eye-rest reminders.
+      selector:
+        number:
+          min: 1
+          max: 240
+          unit_of_measurement: minutes
+    break_minutes:
+      name: Eye-rest break length
+      description: How long a break is meant to last, as said in the reminder.
+      selector:
+        number:
+          min: 0
+          max: 120
+          unit_of_measurement: minutes
+    warn_before_min:
+      name: Warn before the limit
+      description: Minutes before the daily limit at which the warning appears.
+      selector:
+        number:
+          min: 0
+          max: 120
+          unit_of_measurement: minutes
+    pause_on_break:
+      name: Pause on a break
+      description: Pause whatever is playing when an eye-rest reminder fires.
+      selector:
+        boolean:
+    pause_during_break:
+      name: Pause during a break
+      description: Keep playback paused until the break is over.
+      selector:
+        boolean:
+    tts:
+      name: Read reminders out loud
+      description: Speak the reminders instead of only showing them.
+      selector:
+        boolean:
+    auto_shutdown:
+      name: Go dark at the limit
+      description: Turn the screen off when the daily limit is reached.
+      selector:
+        boolean:
+    message_seconds:
+      name: Reminder stays on screen
+      description: Seconds a reminder stays up.
+      selector:
+        number:
+          min: 5
+          max: 600
+          unit_of_measurement: seconds
+    shutdown_delay_s:
+      name: Wait before going dark
+      description: Seconds between the limit being reached and the screen going off.
+      selector:
+        number:
+          min: 0
+          max: 300
+          unit_of_measurement: seconds
+    language:
+      name: Language
+      description: Language tag for the spoken reminders.
+      example: zh-CN
+      selector:
+        text:
+    warning_text:
+      name: Warning text
+      description: The sentence shown when the warning fires.
+      example: 今天看得够久了，再玩一会儿就休息吧
+      selector:
+        text:
