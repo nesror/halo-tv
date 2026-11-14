@@ -185,7 +185,7 @@
     <button data-key="volume_down">音量 −</button>
     <button data-key="volume_up">音量 +</button>
     <button data-key="play_pause">播放/暂停</button>
-    <button data-key="power" data-hold="1">电源</button>
+    <button id="padPower" style="border-color:#5a3a3a;color:#e0a0a0">关机</button>
   </div>
   <div id="keyNote"></div>
 </div>
@@ -357,6 +357,19 @@
     });
   }
 
+  // Power is the one button with a consequence: the set goes to standby, its Wi-Fi goes with it, and
+  // only the physical remote or Xiao Ai can bring it back.
+  $('padPower').addEventListener('click', function () {
+    if (!window.confirm('关机后电视进入待机，网络会断开，需要用实体遥控器或叫小爱才能再打开。\n\n只想关屏请用页面上的「开关屏」。\n\n确定关机？')) return;
+    sendKey('power').then(function (r) {
+      if (r && r.ok) {
+        note.textContent = r.note || '已关机';
+        $('screen').textContent = '已关闭';
+        connected(false);
+      }
+    });
+  });
+
   var repeatTimer = null, repeatDelay = null;
 
   function stopRepeat() {
@@ -367,19 +380,11 @@
 
   Array.prototype.forEach.call(pad.querySelectorAll('[data-key]'), function (b) {
     var key = b.dataset.key;
-    var hold = b.dataset.hold === '1';
     var repeat = b.dataset.repeat === '1';
-    var heldAt = 0, heldTimer = null;
 
     function start(e) {
       e.preventDefault();
       if (navigator.vibrate) navigator.vibrate(8);
-      heldAt = Date.now();
-      if (hold) {
-        // Power is a short press for standby, a long one for the shutdown menu.
-        heldTimer = setTimeout(function () { heldTimer = null; sendKey(key, { menu: true }); }, 800);
-        return;
-      }
       sendKey(key);
       if (repeat) {
         repeatDelay = setTimeout(function () {
@@ -389,17 +394,13 @@
     }
 
     function end() {
-      var was = heldTimer;
-      clearTimeout(heldTimer);
-      heldTimer = null;
       stopRepeat();
-      if (hold && was) sendKey(key);   // released before the long press fired: plain standby
     }
 
     b.addEventListener('pointerdown', start);
     b.addEventListener('pointerup', end);
     b.addEventListener('pointercancel', end);
-    b.addEventListener('pointerleave', function () { if (heldTimer || repeatTimer || repeatDelay) end(); });
+    b.addEventListener('pointerleave', function () { if (repeatTimer || repeatDelay) end(); });
     b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   });
 })();

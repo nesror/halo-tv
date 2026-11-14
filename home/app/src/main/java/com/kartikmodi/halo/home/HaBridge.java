@@ -186,6 +186,20 @@ final class HaBridge {
         }
     }
 
+    /** The same key as the set's own remote channel names it, or null when it has no such button. */
+    private static String miTvName(String name) {
+        switch (name) {
+            case "up": case "down": case "left": case "right": return name;
+            case "ok": case "center": case "enter": case "select": return "enter";
+            case "back": return "back";
+            case "menu": return "menu";
+            case "home": return "home";
+            case "volume_up": return "volumeup";
+            case "volume_down": return "volumedown";
+            default: return null;
+        }
+    }
+
     /** The system-wide equivalent, for firmware that refuses injected keys. -1 where there is none. */
     private static int globalAction(String name) {
         switch (name) {
@@ -212,15 +226,23 @@ final class HaBridge {
             openHome(app);
             return o.put("ok", true).put("via", "launcher").put("state", state(app));
         }
-        if ("power".equals(name) && request.optBoolean("menu", false)) {
-            // The power menu (shut down, restart) is a long press on this firmware.
-            new Thread(() -> Keys.pressAndHold(Keys.POWER, 1400), "HaloPowerMenu").start();
-            return o.put("ok", true).put("via", "input").put("state", state(app));
+        if ("power".equals(name)) {
+            // Injected power keys are accepted and ignored on this firmware; the set's own remote
+            // channel is the only one that puts it to standby.
+            if (MiTv.power()) {
+                return o.put("ok", true).put("via", "mitv")
+                        .put("note", "电视已进入待机，需要用实体遥控器或叫小爱才能再打开");
+            }
+            return o.put("state", state(app)).put("reason", "电视的遥控服务没有应答，关不了机");
         }
 
         int code = keycode(name);
         if (code > 0 && Boolean.TRUE.equals(Keys.press(code))) {
             return o.put("ok", true).put("via", "input").put("state", state(app));
+        }
+        String miKey = miTvName(name);
+        if (miKey != null && MiTv.press(miKey)) {
+            return o.put("ok", true).put("via", "mitv").put("state", state(app));
         }
         int action = globalAction(name);
         if (action > 0 && Keys.global(action)) {

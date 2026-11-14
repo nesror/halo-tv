@@ -195,7 +195,7 @@ itself, from the same small server Home Assistant talks to. Nothing to install o
 
 | | |
 |---|---|
-| **遥控器** | The pad in a sheet: **↑ ↓ ← →**, **确定**, **返回**, **主页**, **菜单**, **最近**, volume, play/pause and **电源** (tap for standby, hold 0.8 s for the shutdown menu). Hold a direction to keep moving. |
+| **遥控器** | The pad in a sheet: **↑ ↓ ← →**, **确定**, **返回**, **主页**, **菜单**, **最近**, volume, play/pause and **关机**. Hold a direction to keep moving. **关机** asks first: the set goes to standby, its Wi-Fi goes with it, and only the physical remote or Xiao Ai brings it back — use **开关屏** to darken the screen without losing the network. |
 | **Now playing** | Play / pause, previous, next. They act on whatever is playing, through its media session. |
 | **Volume, screen** | Quieter / mute / louder, screen on-off, stop, and **Home** to come back to the launcher. |
 | **Message** | Title and body, 10/30/60 seconds on screen, with the recorded voice if the set has no TTS engine. |
@@ -207,6 +207,13 @@ The buttons are real keys, not a shortcut list: `/api/key` runs `/system/bin/inp
 MiTV3S does). Android gives that right to the shell only, so on a stricter set the page says so, and
 the few system-wide buttons (**返回**, **主页**, **最近**) fall back to the accessibility service that
 already handles the Home button.
+
+**Power is the exception.** This firmware accepts an injected `KEYCODE_POWER` and then ignores it — the
+key that puts the set to standby is the real one, handled below the app layer. So that button goes
+through the set's own remote service instead: `mitv.service`, the one the Xiaomi phone app talks to,
+`GET http://127.0.0.1:6095/controller?action=keyevent&keycode=power`. Through it the key counts as a
+press of the physical remote, and the TV really goes to standby. Nothing else uses that channel —
+`input` is faster — and if 6095 does not answer the page says the set refused rather than pretending.
 
 The page is `app/src/main/assets/remote.html`; the endpoints behind it are `/api/key`, `/api/apps`,
 `/api/launch`, plus the Home Assistant ones below. `http://<tv-ip>:8765/api` prints them all.
@@ -449,6 +456,7 @@ home/                  Home (Android app com.kartikmodi.halo.home)
   java/.../Compat.java        the newer APIs Home uses, wrapped for API 23
   java/.../Voice.java         the recorded reminder lines, for TVs with no TTS engine
   java/.../Keys.java          the remote's buttons: /system/bin/input, with accessibility as the fallback
+  java/.../MiTv.java          power through the set's own remote service (mitv.service, 6095)
   java/.../HomeKeyService.java  Home button, for firmware that keeps its own launcher
 tonight/               Tonight (Android app com.kartikmodi.halo.tonight)
   secrets.properties.example     the keys Tonight reads at build time
