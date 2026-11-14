@@ -19,6 +19,7 @@
          SYSTEM_ALERT_WINDOW is the one permission that also lets the app start that message while it is in
          the background; install.sh grants it over ADB (appops), and without it the TV still answers, just
          with messages limited to while Halo TV is on screen. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- Needed since Android 10 to read the Wi-Fi network name for the network pill. Never requested at
@@ -197,5 +198,18 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+        <!-- Opens the Home Assistant bridge as soon as the TV has booted, rather than when Home is
+             first drawn: Home Assistant otherwise reports the TV as unreachable for a while. -->
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.android.quickboot.poweron" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
     </application>
 </manifest>

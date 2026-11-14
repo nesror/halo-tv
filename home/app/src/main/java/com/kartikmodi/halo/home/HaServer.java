@@ -47,16 +47,31 @@ final class HaServer {
     }
 
     private void serve() {
-        try (ServerSocket server = new ServerSocket()) {
-            server.setReuseAddress(true);
-            server.bind(new InetSocketAddress(PORT));
-            while (true) {
-                Socket s = server.accept();
-                pool.execute(() -> handle(s));
+        // A dropped socket or a port still held by the previous process should not leave the TV
+        // unreachable until someone opens Home again, so this retries instead of giving up.
+        int failures = 0;
+        while (true) {
+            try (ServerSocket server = new ServerSocket()) {
+                server.setReuseAddress(true);
+                server.bind(new InetSocketAddress(PORT));
+                failures = 0;
+                while (true) {
+                    Socket s = server.accept();
+                    pool.execute(() -> handle(s));
+                }
+            } catch (IOException e) {
+                failures++;
+                Log.w(TAG, "server stopped, retry " + failures, e);
             }
-        } catch (IOException e) {
-            Log.w(TAG, "server stopped", e);
-            synchronized (HaServer.class) { instance = null; }
+            if (failures > 20) {
+                synchronized (HaServer.class) { instance = null; }
+                return;
+            }
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+                return;
+            }
         }
     }
 
