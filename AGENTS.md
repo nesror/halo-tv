@@ -1,6 +1,6 @@
 # Installing Halo TV: instructions for AI agents
 
-You are helping a person install **Halo TV** (Home + Ambient + Tonight) on their Android TV, Google TV or Fire TV from this repository. Work through the steps in order. The person is probably not a developer: explain each step in one or two plain sentences, and tell them exactly what to press on the TV.
+You are helping a person install **Halo TV** (Home + Tonight) on their Android TV, Google TV or Fire TV from this repository. Work through the steps in order. The person is probably not a developer: explain each step in one or two plain sentences, and tell them exactly what to press on the TV.
 
 ## Rules
 
@@ -63,7 +63,7 @@ TV_HOST=<tv-ip> REGION=<CC> SERVICES="<their apps, comma-separated>" ./install.s
 ```
 
 - `REGION` and `SERVICES` set Tonight's country and apps (names as `tools/services.py` lists them, e.g. `SERVICES="Netflix, JioHotstar, Zee5"`). Without `SERVICES`, `--yes` picks the services whose app is already on the TV. The result is the `services=` line in `tonight/secrets.properties`.
-- `--yes` means no prompts. The installer uses the existing `tonight/secrets.properties`. If there's no TMDB token, it installs Home + Ambient and skips Tonight.
+- `--yes` means no prompts. The installer uses the existing `tonight/secrets.properties`. If there's no TMDB token, it installs Home and skips Tonight.
 - **Tell the person to watch the TV** when the installer connects: the first time, a dialog asks **"Allow USB debugging?"**. They must tick **Always allow from this computer** and press **OK** within about two minutes. If it times out, run the command again.
 - Add `--keep-stock` if they don't want the stock launcher disabled (on Fire TV it never is).
 - The first build downloads Gradle and dependencies, which takes a few minutes.
@@ -75,19 +75,9 @@ The installer detects the platform itself:
 ## Step 5: confirm with the person
 
 Ask them to press **Home** on the remote. They should see the liquid-glass Home. Then point them to:
-- **AMBIENT** on the dock (the always-on screen),
 - **TONIGHT.** in the top bar,
-- the **phone web app**: `http://<tv-ip>:8765`, or scan the QR code on Ambient. Its **Settings** tab is where they can paste an **OpenAI key** to give Jarvis a natural voice (optional; stored on the TV only).
-
-## Optional: Jarvis relay and Alexa
-
-Only if they want Alexa or to talk to Jarvis away from home. Needs Node.js 18+ and a free Cloudflare account:
-
-```bash
-jarvis/setup-relay.sh --tv <tv-ip>
-```
-
-A browser window opens for the Cloudflare login (the person does that). Alexa skills are a further optional step: follow README.md, "Alexa skills".
+- **Settings** and **Inputs** in the same row: this branch opens the TV's own settings app and the set's
+  source popup, rather than Halo's own panels.
 
 ## Later: changing the country or the streaming apps
 
@@ -102,7 +92,7 @@ in `homeassistant/custom_components/halo_tv`; the guide is `docs/home-assistant.
    `cp -r homeassistant/custom_components/halo_tv <config>/custom_components/` (`<config>` holds
    `configuration.yaml`), then restart Home Assistant.
 2. Tell them to open **Settings → Devices & services → Add integration → Halo TV** and enter the TV's
-   address, the same `http://<tv-ip>:8765` the phone remote uses.
+   address, `http://<tv-ip>:8765`.
 3. `install.sh` already granted the two optional ADB permissions this needs (overlay, notification
    listener). If messages only appear while Halo TV is on screen, the overlay grant did not stick:
    `TV_HOST=<ip> tools/venv/bin/python tools/tv.py 'appops set com.kartikmodi.halo.home SYSTEM_ALERT_WINDOW allow'`.
@@ -119,6 +109,6 @@ TV_HOST=<tv-ip> ./uninstall.sh
 ## Reference
 
 - `tools/tv.py` is the ADB client: `TV_HOST=<ip> tools/venv/bin/python tools/tv.py '<shell command>'`; `--probe` prints the model and Android version.
-- Package names: `com.kartikmodi.halo.home` (Home + Ambient), `com.kartikmodi.halo.tonight`.
+- Package names: `com.kartikmodi.halo.home` (Home), `com.kartikmodi.halo.tonight`.
 - Tonight's built-in services (colours, packages, links): `tonight/app/src/main/java/com/kartikmodi/halo/tonight/Services.java`; the picker: `tools/services.py`.
 - Home's settings: `home/app/src/main/res/values/config.xml`. Rebuild with `./install.sh --home-only`.

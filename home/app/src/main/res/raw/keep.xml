@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- app_banners and glass_logos name drawables at run time, which resource shrinking cannot see: keep every
-     banner_* (banner artwork) and every logo_* (the white mark Glass Home draws on a tile). -->
+     banner_* (banner artwork) and every logo_* (the white mark Glass Home draws on a tile). The vo_* files
+     are the recorded reminders Voice stitches together, also only known to code. -->
 <resources xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@drawable/banner_*,@drawable/logo_*" />
+    tools:keep="@drawable/banner_*,@drawable/logo_*,@raw/vo_*" />

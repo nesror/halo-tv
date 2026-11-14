@@ -8,7 +8,7 @@
 |---|---|
 | `notify.mobile_app_halo_tv` | 在电视上显示消息：文字、图片，可选语音朗读。参数形状与手机伴侣应用一致（`message` / `title` / `data:`）。 |
 | `media_player.halo_tv` | 电视本体：开/关（= 亮屏/熄屏）、播放/暂停、音量、正在播放的内容。 |
-| `halo_tv.command` | 单条指令：`pause`、`screen_off`、`ambient`、`say` 等，供脚本使用。 |
+| `halo_tv.command` | 单条指令：`pause`、`screen_off`、`say` 等，供脚本使用。 |
 
 这三样都走电视上原本就给手机遥控器用的那个网页服务（8765 端口），不需要在电视上额外开端口或装服务。
 
@@ -179,7 +179,6 @@ data:
 | `next` / `prev` | 氛围屏的上一曲 / 下一曲 |
 | `screen_off` / `screen_on` / `screen_toggle` | 熄屏 / 亮屏 / 切换 |
 | `home` | 回到桌面 |
-| `ambient` | 打开氛围屏 |
 | `dismiss` | 关掉当前消息 |
 | `say` | 只朗读 `text`，不显示消息 |
 | `stop_speech` | 停止朗读 |
@@ -216,7 +215,7 @@ curl -X POST http://192.168.1.42:8765/api/ha/command -d '{"action":"screen_off"}
 
 `/api/ha/state` 返回 `screen`（`on`/`off`）、`screen_mode`（`awake`/`dim`/`sleep`）、`message`、`media`
 （`title`、`artist`、`artwork`、`app`、`app_label`、`playing`、`paused`、`position`、`duration`）、
-`volume`、`volume_level`、`volume_max`、`muted`、`ambient`、`overlay`。
+`volume`、`volume_level`、`volume_max`、`muted`、`overlay`。
 
 接口没有鉴权：同一个 Wi-Fi 下的任何设备都能访问，和手机遥控器的情况一样。在意的话就在路由器上封掉 8765。
 

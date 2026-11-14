@@ -4,8 +4,8 @@ Halo TV can act as a notifier and as a TV in Home Assistant: a message on the sc
 a voice that reads it out), a `media_player` entity for the television itself, and a handful of commands —
 pause, screen off, screen on.
 
-Nothing new is opened on the network. It all goes through the little web server the phone remote already
-uses, on port 8765, answered by the launcher's own process.
+Nothing new is opened on the network. It all goes through the launcher's own small HTTP bridge, on port
+8765, answered by the launcher's own process.
 
 *中文速览：[home-assistant.zh-CN.md](home-assistant.zh-CN.md).*
 
@@ -17,7 +17,7 @@ uses, on port 8765, answered by the launcher's own process.
 |---|---|
 | `notify.mobile_app_halo_tv` | A message on the TV: `message`, `title`, and a `data:` dictionary with a picture, a voice and a duration. Named like the companion app's, so an automation you already have for a phone works with one word changed. |
 | `media_player.halo_tv` | The TV. **Off** means the screen is dark, so `turn_off` is "screen off" and `turn_on` brings it back. Also play, pause, stop, volume, and what is playing (title, artist, artwork, app). |
-| `halo_tv.command` | One action at a time — `pause`, `screen_off`, `ambient`, `say` — for scripts that want to be explicit. |
+| `halo_tv.command` | One action at a time — `pause`, `screen_off`, `say` — for scripts that want to be explicit. |
 
 The `media_player` also carries, as attributes, whether a message is showing, how the screen is off
 (`dim` or `sleep`), and which app is playing.
@@ -45,7 +45,7 @@ The `media_player` also carries, as attributes, whether a message is showing, ho
    TV_HOST=<tv-ip> tools/venv/bin/python tools/tv.py 'cmd notification allow_listener com.kartikmodi.halo.home/.HaMediaListener'
    ```
 
-3. **Know the TV's address** — the same one the phone remote uses, `http://<tv-ip>:8765`.
+3. **Know the TV's address** — `http://<tv-ip>:8765`.
 
 ---
 
@@ -160,7 +160,7 @@ data:
 |---|---|
 | `turn_off` | Screen off — a real sleep where the TV allows it, otherwise a black screen at zero brightness, after which the TV's own sleep timer finishes the job. **Any key on the remote brings the picture back.** |
 | `turn_on` | Screen on, woken from either kind of off. |
-| `play` / `pause` / `stop` | Whatever is playing: the Ambient screen's own player, or the media session of YouTube, Netflix, Plex... |
+| `play` / `pause` / `stop` | Whatever is playing: the media session of YouTube, Netflix, Plex... |
 | `volume_set` / `volume_mute` | The TV's music volume. |
 | state `off` | The screen is dark. |
 | state `playing` / `paused` / `idle` | Something is playing / paused / the TV is on but quiet. |
@@ -209,10 +209,9 @@ automation:
 | Action | What it does |
 |---|---|
 | `pause` / `play` / `play_pause` / `stop` | Playback. |
-| `next` / `prev` | The next or previous track, on the Ambient screen. |
+| `next` / `prev` | The next or previous track, in the app that is playing. |
 | `screen_off` / `screen_on` / `screen_toggle` | The screen. |
 | `home` | Opens the launcher. |
-| `ambient` | Opens the Ambient screen. |
 | `dismiss` | Takes a message off the screen. |
 | `say` | Reads `text` out loud, with no message on screen. |
 | `stop_speech` | Stops talking. |
@@ -261,9 +260,9 @@ curl -X POST http://192.168.1.42:8765/api/ha/command -d '{"action":"screen_off"}
 
 `state` answers with `screen` (`on`/`off`), `screen_mode` (`awake`/`dim`/`sleep`), `message`, `media`
 (`title`, `artist`, `artwork`, `app`, `app_label`, `playing`, `paused`, `position`, `duration`), `volume`,
-`volume_level`, `volume_max`, `muted`, `ambient` and `overlay`.
+`volume_level`, `volume_max`, `muted` and `overlay`.
 
-There is no authentication: anything on your Wi-Fi can talk to the TV, exactly as with the phone remote.
+There is no authentication: anything on your Wi-Fi can talk to the TV.
 Keep the TV on a network you trust, or block port 8765 at the router if that matters to you.
 
 ---
@@ -275,7 +274,7 @@ Keep the TV on a network you trust, or block port 8765 at the router if that mat
 | **"Cannot reach the TV"** while adding it | The address must be the TV's, and Halo TV must be running on it. Open `http://<tv-ip>:8765` in a browser on the same Wi-Fi; if that does not load, the TV is asleep or off the network. |
 | **Messages only appear while Halo TV is on screen** | The overlay grant is missing. Run the `appops set … SYSTEM_ALERT_WINDOW allow` line above. |
 | **Pause does nothing in Netflix** | The notification-listener grant is missing, so the TV cannot see the media session; it then falls back to a media key, which a few apps ignore. Grant it and pause again. |
-| **No title or artwork shown** | Same grant — those come from the media session. The Ambient screen's own songs are reported even without it. |
+| **No title or artwork shown** | Same grant — titles and artwork come from the media session, so nothing is shown without it. |
 | **The picture never appears** | The TV could not fetch the URL. It must be reachable from the TV, and a phone on the same Wi-Fi is not proof. Try `http://<ha-ip>:8123/local/test.jpg` in a browser *on the TV*. |
 | **The TV does not really sleep, it just goes black** | Expected on most TVs: `goToSleep` needs a system app. The black window releases the "stay awake" flag, so the TV's own screensaver and sleep timer take over. |
 | **The screen will not come back** | Press any key on the remote: the black window closes on any key, by design, and reports `screen: on` again. |

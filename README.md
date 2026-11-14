@@ -1,14 +1,26 @@
-<p align="center"><img src="docs/banner.png" alt="Halo TV: Home, Ambient and Tonight on a TV" width="100%"></p>
+<p align="center"><img src="docs/banner.png" alt="Halo TV: Home and Tonight on a TV" width="100%"></p>
 
 # Halo TV
 
-**A new OS for any Android TV, Google TV or Fire TV.** Halo TV replaces your TV's ad-filled home screen with three things:
+**A new OS for any Android TV, Google TV or Fire TV.** Halo TV replaces your TV's ad-filled home screen with two things:
 
 | | |
 |---|---|
 | **Home** | A liquid-glass home screen in one colour (Midnight), a slow *Waves* motion backdrop behind the glass, and clean white logos instead of app banners. No ads, no sponsored rows. |
-| **Ambient** | An always-on screen with a clock, sunrise/sunset, weather, air quality, a turntable music player and **Jarvis**, an AI agent that talks back. Everything is controllable from a web app on your phone: scan the QR code on the screen. |
 | **Tonight** | One place to find films and series across **your** streaming apps, in **your** country: Netflix, Prime Video, Disney+, JioHotstar, Apple TV+, Hulu, BBC iPlayer or whatever you subscribe to. A genre wheel, AI picks that remember your taste, and a **Marvel and DC Hall of Heroes** listing every film and series a hero has been in. |
+
+**This branch is tuned for an older set**: a Xiaomi MiTV3S on Android 6.0 (API 23), where the stock home
+screen cannot be disabled and the firmware answers no Settings intent. Compared with upstream it
+
+- runs from **Android 6.0 (API 23)**, with core library desugaring for `java.time` and a `Compat` class
+  around the newer APIs the launcher uses;
+- turns the header's gear into **this TV's own Settings** app and its input button into the vendor's
+  **source popup**;
+- takes **Home** over with an accessibility service (rate-limited, so a slow start cannot bounce between
+  the two home screens);
+- **has no Ambient screen**: the always-on clock, the phone web app, the QR code, the turntable player and
+  Jarvis were removed, along with the web server they shared;
+- keeps **Home Assistant**, now on its own small bridge (`HaServer`, port 8765).
 
 It installs over Wi-Fi from your computer in one command, and it's built to be installed **by an AI coding agent** (Claude Code, Codex or ChatGPT). Give your agent this repo and it does the setup with you.
 
@@ -27,7 +39,6 @@ It installs over Wi-Fi from your computer in one command, and it's built to be i
 - [Using Halo TV](#using-halo-tv)
 - [Home Assistant](#home-assistant)
 - [Viewing time](#viewing-time)
-- [Jarvis relay and Alexa (optional)](#jarvis-relay-and-alexa-optional)
 - [Customise](#customise)
   - [Country and streaming apps](#country-and-streaming-apps)
   - [Prompts for your agent](#prompts-for-your-agent)
@@ -47,10 +58,6 @@ All captured on a real TV running this code.
 
 ![Home](docs/screenshots/home.png)
 
-**Ambient.** Clock, sunrise, weather, air, the turntable player and Jarvis (the chrome orb). Scan the QR code to control it from a phone.
-
-![Ambient](docs/screenshots/ambient.png)
-
 **Tonight.** Genre wheel, AI picks "because you loved…", films and series from every service you have.
 
 ![Tonight](docs/screenshots/tonight.png)
@@ -60,12 +67,6 @@ All captured on a real TV running this code.
 | Marvel and DC | Hall of Heroes | Home |
 |---|---|---|
 | ![Marvel](docs/screenshots/real-marvel.jpg) | ![DC](docs/screenshots/real-dc.jpg) | ![Home on the TV](docs/screenshots/real-home.jpg) |
-
-**Phone web app.** Music, Jarvis, notes and settings, opened by scanning the QR code on Ambient.
-
-| Music | Jarvis |
-|---|---|
-| <img src="docs/screenshots/phone-music.png" width="300"> | <img src="docs/screenshots/phone-jarvis.png" width="300"> |
 
 ---
 
@@ -89,12 +90,11 @@ Fill in the last line (or leave it out and the agent asks). The agent reads [AGE
 
 | | |
 |---|---|
-| **A TV** | Any Android TV or Google TV (Android 8.0+), or a Fire TV / Fire TV Stick / Fire TV Edition television |
+| **A TV** | Any Android TV or Google TV, **Android 6.0 (API 23)** and up, or a Fire TV / Fire TV Stick / Fire TV Edition television. Tested on a Xiaomi MiTV3S (Android 6.0.1) |
 | **A computer** | macOS or Linux (Windows: use WSL), on the same Wi-Fi as the TV |
 | **JDK 17** | macOS: `brew install openjdk@17` · Ubuntu: `sudo apt install openjdk-17-jdk` |
 | **Android SDK** | macOS: `brew install --cask android-commandlinetools` · or install Android Studio. Then accept the licences once: `yes \| sdkmanager --licenses` |
 | **Python 3** | Already on macOS and most Linux distributions. Used for the built-in ADB client (no `adb` install needed). |
-| **Node.js 18+** | Only for the optional [Jarvis relay](#jarvis-relay-and-alexa-optional) |
 
 ### 2. Turn on ADB debugging on the TV
 
@@ -132,7 +132,6 @@ Keys are typed into the installer (hidden as you type) and saved only on your co
 |---|---|---|---|
 | **TMDB API Read Access Token** | Tonight (required for Tonight) | [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api): create a free account, request an API key, then copy the long *API Read Access Token* | Free |
 | **Anthropic API key** | Tonight's AI picks and taste memory (optional) | [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys) | Pay as you go, a few cents a month |
-| **OpenAI API key** | Jarvis's natural voice and smarter answers on Ambient (optional) | [platform.openai.com/api-keys](https://platform.openai.com/api-keys). Entered later on the phone web app, not in the installer | Pay as you go |
 
 ### 4. Run the installer
 
@@ -148,9 +147,10 @@ It walks through seven steps:
 2. **Connects to the TV.** Enter its IP address.
 3. **Asks for your keys** (step 3 above), **your country** (it suggests the TV's own) and **your streaming apps**: it lists every streaming service TMDB knows in your country, most popular first, with a `*` on the ones whose app is already on the TV. Type the numbers or names you subscribe to, or press Enter for the starred ones. Everything goes into the git-ignored `tonight/secrets.properties`.
 4. **Builds** Home and Tonight.
-5. **Installs Home + Ambient** and makes it your home screen:
+5. **Installs Home** and makes it your home screen:
    - **Google TV / Android TV:** Halo TV becomes the real Home and the stock launcher is disabled (not deleted). If anything goes wrong it is put back automatically.
    - **Fire TV:** Fire OS doesn't let another app own Home, so the Amazon launcher stays and Halo TV's Home-button service sends the Home button to Halo TV.
+   - **MIUI TV / firmware that cannot be disabled (this branch):** the stock launcher stays; `home_forward_package` in `config.xml` makes its window count as the Home button, and the same accessibility service brings Halo TV back.
 6. **Installs the Waves backdrop** behind the glass.
 7. **Installs Tonight.**
 
@@ -158,7 +158,7 @@ Useful options:
 
 ```bash
 ./install.sh --tv 192.168.1.50          # skip the IP prompt
-./install.sh --home-only                # Home + Ambient only
+./install.sh --home-only                # Home only
 ./install.sh --tonight-only             # Tonight only
 ./install.sh --keep-stock               # never disable the stock launcher (use the Home-button redirect)
 ./install.sh --input-key-service        # also open Halo TV's input switcher from the remote's Input button
@@ -179,10 +179,8 @@ Re-running it is safe: it reinstalls over the existing apps and keeps your setti
 
 | | |
 |---|---|
-| **Home** | Arrow keys move between apps; the first row is the dock. **TONIGHT.** in the top bar opens Tonight. **Inputs**, **Wi-Fi** and **Settings** sit next to it. Hold **OK** on Settings for launcher settings. |
-| **Ambient** | The **AMBIENT** tile on the dock. Leave it on as a screensaver-style display. |
-| **Phone web app** | Scan the QR code on Ambient, or open `http://<TV-IP>:8765` on a phone on the same Wi-Fi. **Music**: search and play on the TV, queue songs. **Jarvis**: type or talk. **Settings**: weather location, OpenAI key for Jarvis's voice. Add it to your home screen for an app icon. |
-| **Jarvis** | Ask for the weather, music, timers ("remind me in 20 minutes to check the oven"), the volume, or anything else. With an OpenAI key it speaks in a natural voice; without one it uses the TV's own voice. |
+| **Home** | Arrow keys move between apps; the first row is the dock. **TONIGHT.** in the top bar opens Tonight. Next to it sit **Inputs**, **Wi-Fi** and **Settings**: Settings opens this TV's own settings app, Inputs the set's source popup (see `source_popup_broadcast` and `source_rows`). Hold **OK** on Settings for Halo's own launcher settings. |
+| **Tiles** | Glass tiles show a bundled logo where `glass_logos` names one, a Michroma wordmark for `wordmark:TEXT`, and otherwise the first **four characters** of the app's name, one size for every tile. |
 | **Tonight** | Spin the genre wheel, open **For You** for AI picks, use search (top right), or pick **MARVEL** / **DC** for the Hall of Heroes. **Play on…** opens the title in the right app. |
 | **Home Assistant** | Optional: a message on screen with a picture and a voice, and a real TV entity. See [Home Assistant](#home-assistant). |
 
@@ -190,16 +188,25 @@ Re-running it is safe: it reinstalls over the existing apps and keeps your setti
 
 ## Home Assistant
 
-Halo TV works as an Android TV in [Home Assistant](https://www.home-assistant.io): it can be told to show
-a message (text, a photo, and a voice that reads it out), to pause, and to go dark. The component is in
-`homeassistant/custom_components/halo_tv`; the full guide is [docs/home-assistant.md](docs/home-assistant.md).
+Halo TV is an Android TV in [Home Assistant](https://www.home-assistant.io): it can be told to show a
+message (text, a photo, and a voice that reads it out), to pause, and to go dark. The launcher itself
+answers on port **8765** of the TV's Wi-Fi address — no cloud, no MQTT broker, nothing else exposed.
+The component is in `homeassistant/custom_components/halo_tv`; the full guide is
+[docs/home-assistant.md](docs/home-assistant.md).
 
 ```bash
 cp -r homeassistant/custom_components/halo_tv <config>/custom_components/   # then restart Home Assistant
 ```
 
 Then **Settings → Devices & services → Add integration → Halo TV**, and give it the TV's address
-(`http://<tv-ip>:8765`, the one the phone remote uses). You get:
+(`192.168.1.50`, or `http://192.168.1.50:8765`). Check the TV answers first:
+
+```bash
+curl http://<tv-ip>:8765/api/ha/info
+# {"app":"Halo TV","version":"2.7","model":"MiTV3S","port":8765,"features":["notify","tts",...]}
+```
+
+You get:
 
 | | |
 |---|---|
@@ -221,18 +228,36 @@ data:
 Messages can carry a command too — `data: {command: pause}`, or a message of just `/screen_off` — so one
 notification can pause the film, put a photo on screen and say what happened.
 
+The endpoints behind it, if you would rather call them from a script:
+
+| | |
+|---|---|
+| `GET /api/ha/info` | What this TV is: model, Android version, features. |
+| `GET /api/ha/state` | Screen, volume, what is playing, the message card, today's viewing time. |
+| `POST /api/ha/notify` | `{"message": "...", "title": "...", "image": "http://...", "tts": true, "duration": 25}` |
+| `POST /api/ha/command` | `{"action": "pause"}` — `pause`, `play`, `play_pause`, `stop`, `next`, `prev`, `screen_off`, `screen_on`, `screen_toggle`, `home`, `dismiss`, `say`, `stop_speech`, `volume_set`, `volume_up`, `volume_down`, `mute`, `unmute`, `notify`, `viewing_reset`, `viewing_off`, `viewing_on` |
+| `GET /api/tvtime` | Today's viewing clock, and its thresholds (see below). |
+
+`GET /` on the same port prints this list, which makes it the quickest way to check the TV is reachable.
+
 ---
 
 ## Viewing time
 
-A daily viewing clock is built in. It counts only time spent outside the launcher — the home screen,
-Ambient and message cards do not count — and needs no extra permission. By default every 30 minutes it
-pauses the video, puts up a card and says (TTS) that it is time to look into the distance for five
+A daily viewing clock is built in. It counts only time spent outside the launcher — the home screen
+and message cards do not count — and needs no extra permission. By default every 30 minutes it
+pauses the video, puts up a card and says that it is time to look into the distance for five
 minutes; at 2 h 20 m it speaks a fixed warning ("今天看电视已满2小时，10分钟后自动关机。", the
 wording need not match the real count); at 2 h 30 m the screen simply goes dark — no card, no voice. The
 count resets at local midnight and survives a reboot.
 
-Every threshold is live over HTTP, on the port the phone remote already uses:
+The reminder is spoken through the TV's text-to-speech engine when it has one. This MiTV3S has **no
+engine at all**, so those two lines are recorded (`res/raw/vo_*.wav`, 16 kHz) and stitched together at
+run time by `Voice.java` — the fixed phrases plus the numbers in them, so "已30分钟，休息5分钟" and
+"已1小时30分" both come out right. A TV with an engine is unaffected, and a custom `warning_text` (or a
+Home Assistant message with `tts: true`) still needs an engine to be read.
+
+Every threshold is live over HTTP, on the same port as the Home Assistant bridge:
 
 ```bash
 curl http://<tv-ip>:8765/api/tvtime
@@ -248,40 +273,6 @@ and cannot do when "turning the TV off".
 
 ---
 
-## Jarvis relay and Alexa (optional)
-
-Jarvis already works from the phone web app on your Wi-Fi. The relay is a tiny free [Cloudflare Worker](https://workers.cloudflare.com/) that also lets **Alexa** ("Alexa, ask Jarvis to…") and your phone **away from home** reach the TV.
-
-```bash
-jarvis/setup-relay.sh --tv 192.168.1.50
-```
-
-It logs in to Cloudflare (a browser window opens), deploys `jarvis/relay`, generates two random keys (`TV_KEY` for the TV, `PHONE_KEY` for your phone), stores them as Worker secrets, and pairs the TV. The keys never touch the repo. It fits easily in Cloudflare's free plan.
-
-### Alexa skills
-
-Optional, and needs an [Amazon developer account](https://developer.amazon.com/alexa/console/ask) (free).
-
-1. Run `jarvis/setup-relay.sh` first. It writes ready-to-use manifests pointing at your relay to `.halo/alexa/jarvis-skill.json` and `.halo/alexa/tonight-skill.json` (git-ignored).
-2. Install the Alexa CLI and log in: `npm install -g ask-cli && ask configure`.
-3. Create each skill and upload its model:
-   ```bash
-   ask smapi create-skill-for-vendor --manifest "file:.halo/alexa/jarvis-skill.json"     # prints the skill id
-   ask smapi set-interaction-model --skill-id <skill-id> --stage development --locale en-GB \
-     --interaction-model "file:jarvis/alexa/jarvis/en-GB.json"
-   ```
-   Repeat with `tonight-skill.json` and `jarvis/alexa/tonight/en-GB.json`.
-   The models are English (UK). If your Alexa speaks another English (`en-IN`, `en-US`, `en-AU`, `en-CA`), use that locale instead: in the two manifests rename the `en-GB` keys to it, and pass `--locale en-IN` (for example) with the same model files.
-4. Tell the relay which skills to trust:
-   ```bash
-   cd jarvis/relay
-   npx wrangler@4 secret put SKILL_ID           # the Jarvis skill id
-   npx wrangler@4 secret put TONIGHT_SKILL_ID   # the Tonight skill id
-   ```
-5. In the Alexa app, enable both skills under **Your Skills → Dev**. Then: *"Alexa, ask Jarvis to play some chill music"*, or *"Alexa, ask Tonight for something like Loki"*.
-
----
-
 ## Customise
 
 Home's look and dock live in [`home/app/src/main/res/values/config.xml`](home/app/src/main/res/values/config.xml). Edit it, then run `./install.sh --home-only`.
@@ -289,12 +280,17 @@ Home's look and dock live in [`home/app/src/main/res/values/config.xml`](home/ap
 | Setting | What it does |
 |---|---|
 | `dock_apps` | Apps on the dock, in order. List both the Google TV and Fire TV package of an app; the missing one is skipped. |
-| `hidden_apps` | Apps never shown on Home. |
+| `hidden_apps` | Apps never shown on Home (this branch also hides MIUI TV's own launcher, `com.mitv.tvhome`). |
 | `glass_home` | The liquid-glass look (on by default). |
 | `glass_accent` / `glass_background` | The one colour: Midnight is `#FF5B8CFF` on `#FF040914`. Try `#FFFF5B8C` for a rose theme. |
 | `glass_backdrop` | `video` (Waves behind plain glass, light), `lens` (Waves bent through the glass, heavier), or `still` (gradient only). |
 | `columns` | Tiles per row (5 by default). |
 | `live_tv_package` | Your TV's Live TV app for the Inputs menu (find it with `tools/tv.py "pm list packages"`). |
+| `glass_logos` | `package=logo_drawable` pairs: a white logo for a tile that has no banner of its own. |
+| `home_forward_package` | Firmware whose launcher cannot be disabled (`com.mitv.tvhome` on MIUI TV). Its window coming to the front is treated as the Home button. Empty on every other TV. |
+| `source_popup_broadcast` | `package:action` to fire when the header's input button is pressed, for vendors that answer no input intent (MIUI TV: `com.xiaomi.mitv.settings:com.xiaomi.mitv.settings.INPUTSOURCE_POPUP`). |
+| `source_rows` | `label=component` rows for Halo's own source panel, used when the vendor has no popup. |
+| `settings_key_panel` | `true` opens Halo's quick settings panel for the remote's Settings key instead of the TV's settings app. |
 
 Replace `assets/waves.mp4` with any looping 960×540 video for a different backdrop.
 
@@ -376,7 +372,10 @@ Re-enables the stock launcher, removes Halo TV's Home-button service, and uninst
 |---|---|
 | `could not connect to …:5555` | ADB debugging is off, the IP is wrong, or the TV is on a different network. On Google TV also check **Network debugging**. Restart the TV and try again. |
 | The TV never showed "Allow USB debugging?" | It may be behind the current app: press **Home**. Or revoke old authorisations in Developer options and run the installer again. |
-| Home button still opens the old home | Fire TV / `--keep-stock`: the Home-button service is off. Turn on **Halo TV Home button** in **Settings → Accessibility** and run the installer again. Google TV: run `./install.sh`; it reports where Home resolves. |
+| Home button still opens the old home (MIUI TV) | The stock launcher cannot be disabled on this firmware. Check **Settings → Accessibility → Halo TV Home button** is on, and that `home_forward_package` matches its package (`pm list packages | grep tvhome`). |
+| Home button stopped working after reinstalling | An `adb install -r` clears it from the enabled services. Re-run: `settings put secure enabled_accessibility_services <list>:com.kartikmodi.halo.home/.HomeKeyService; settings put secure accessibility_enabled 1`. |
+| Home Assistant says it cannot connect | `curl http://<tv-ip>:8765/api/ha/info` on a computer on the same Wi-Fi. Nothing answers if Halo TV is not running; port 8765 must not be blocked. |
+| Home button still opens the old home (Fire TV, `--keep-stock`) | the Home-button service is off. Turn on **Halo TV Home button** in **Settings → Accessibility** and run the installer again. Google TV: run `./install.sh`; it reports where Home resolves. |
 | `Home currently resolves to …setupwraith` (Google TV) | Google's setup wizard is claiming Home. Use `./install.sh --keep-stock`. |
 | No Waves behind the glass | Run `./install.sh --home-only` again, or set `glass_backdrop` to `still` on low-end TVs. |
 | Tonight is empty | The TMDB token is missing or wrong. Fix `tonight/secrets.properties` and run `./install.sh --tonight-only`. |
@@ -385,7 +384,6 @@ Re-enables the stock launcher, removes Halo TV's Home-button service, and uninst
 | "<Service> isn't installed on this TV" | Install the app on the TV, or, for a service that isn't built in, add its package as the third part of its `services=` entry. |
 | A service opens its app but not the title | That app doesn't take JustWatch's links; search for the title in the app. |
 | No AI picks in Tonight | Add an Anthropic key to `tonight/secrets.properties` and run `./install.sh --tonight-only`. |
-| The phone web app won't open | The phone must be on the same Wi-Fi as the TV. Open `http://<TV-IP>:8765`. |
 | Build fails with a licence error | `yes \| sdkmanager --licenses`, then run again. |
 
 ---
@@ -394,25 +392,25 @@ Re-enables the stock launcher, removes Halo TV's Home-button service, and uninst
 
 - **No key is in this repository.** The installer writes your keys to `tonight/secrets.properties`, which is git-ignored (see [`tonight/secrets.properties.example`](tonight/secrets.properties.example)).
 - Your TMDB and Anthropic keys are built into **your** copy of Tonight. Don't share the APK you build.
-- The OpenAI key for Jarvis is entered on the phone web app and stored **only on the TV**; the TV never sends it back out.
-- The relay keys are generated on your computer and stored as Cloudflare Worker secrets and on the TV.
 - The ADB key that lets your computer talk to the TV is created in `tools/adbkey/` (git-ignored).
-- Ambient asks a public IP-location service for your town, for the weather, unless you set a location on the phone web app.
+- The launcher's HTTP bridge (port 8765) answers any device on your Wi-Fi, with no password. Keep the TV on a network you trust.
 
 ---
 
 ## Project layout
 
 ```
-home/                  Home + Ambient (Android app com.kartikmodi.halo.home)
-  app/src/main/assets/ambient/   Ambient screen (tv.html) and the phone web app (phone.html)
-  app/src/main/res/values/config.xml   dock, hidden apps, colours, look
+home/                  Home (Android app com.kartikmodi.halo.home)
+  app/src/main/res/values/config.xml   dock, hidden apps, colours, look, TV quirks
+  app/src/main/res/raw/vo_*.wav        the reminder phrases Voice stitches together
+  java/.../HaServer.java      Home Assistant bridge on port 8765 (/api/ha/*, /api/tvtime/*)
+  java/.../HaBridge.java      what that bridge answers: state, messages, commands
+  java/.../TvApps.java        finds the set's own Settings and source apps
+  java/.../Compat.java        the newer APIs Home uses, wrapped for API 23
+  java/.../Voice.java         the recorded reminder lines, for TVs with no TTS engine
+  java/.../HomeKeyService.java  Home button, for firmware that keeps its own launcher
 tonight/               Tonight (Android app com.kartikmodi.halo.tonight)
   secrets.properties.example     the keys Tonight reads at build time
-jarvis/
-  relay/               Cloudflare Worker that connects Alexa and your phone to the TV
-  alexa/               Alexa skill manifests and interaction models (Jarvis, Tonight)
-  setup-relay.sh       deploys the relay and pairs the TV
 homeassistant/         Home Assistant custom integration (messages, media_player, commands)
   custom_components/halo_tv/   the integration itself
   tests/               its tests, plus fake_tv.py: a stand-in TV for working on it without one
@@ -422,8 +420,6 @@ install.sh             builds and installs everything
 uninstall.sh           puts the TV back the way it was
 AGENTS.md              step-by-step instructions for AI agents (Claude Code, Codex, ChatGPT)
 ```
-
----
 
 ## License
 

@@ -30,6 +30,8 @@ final class Speech {
     private static boolean focusHeld;
     /** Said as soon as the engine finishes starting, for a message that arrived while it did. */
     private static String pendingText, pendingLang;
+    /** A TV with no engine at all (this MiTV3S): stop asking, and use the recorded lines instead. */
+    private static boolean noEngine;
 
     private Speech() {
     }
@@ -39,16 +41,24 @@ final class Speech {
         if (text == null || text.trim().isEmpty()) return;
         Context app = context.getApplicationContext();
         synchronized (Speech.class) {
+            if (noEngine) {
+                Voice.say(app, text.trim());
+                return;
+            }
             if (tts == null) {
                 pendingText = text.trim();
                 pendingLang = language;
                 audio = (AudioManager) app.getSystemService(Context.AUDIO_SERVICE);
                 tts = new TextToSpeech(app, status -> {
                     synchronized (Speech.class) {
+                        String t = pendingText, l = pendingLang;
                         if (status != TextToSpeech.SUCCESS) {
-                            Log.w(TAG, "no voice engine on this TV");
+                            // No engine installed: fall back to the launcher's own recorded lines.
+                            Log.w(TAG, "no voice engine on this TV, using the recorded voice");
                             tts = null;
                             pendingText = null;
+                            noEngine = true;
+                            if (t != null) Voice.say(app, t);
                             return;
                         }
                         ready = true;
@@ -57,7 +67,6 @@ final class Speech {
                             @Override public void onDone(String id) { release(); }
                             @Override public void onError(String id) { release(); }
                         });
-                        String t = pendingText, l = pendingLang;
                         pendingText = null;
                         if (t != null) utter(t, l);
                     }
@@ -74,6 +83,7 @@ final class Speech {
 
     /** Stops whatever is being said and lets the music back up. */
     static void stop() {
+        Voice.stop();
         synchronized (Speech.class) {
             pendingText = null;
             if (tts != null && ready) tts.stop();
